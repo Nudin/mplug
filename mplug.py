@@ -22,11 +22,21 @@ import shutil
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import List, Optional
 
 from git import Repo
 
 
-def ask_num(question, options):
+def ask_num(question: str, options: List[str]) -> Optional[str]:
+    """Ask to choose from a number of options.
+
+    The user is given a list of numbered options and should pick one, by
+    entering the corresponding number.
+
+    question: The message that is shown to the user
+    options: The options from which the user should pick
+    returns: the choice
+    """
     print(question)
     for i, opt in enumerate(options):
         print(f"[i] {opt}")
@@ -37,12 +47,13 @@ def ask_num(question, options):
         assert num < len(options)
         return options[num]
     except ValueError:
-        return False
+        return None
     except AssertionError:
-        return False
+        return None
 
 
-def ask_yes_no(question):
+def ask_yes_no(question: str) -> bool:
+    """Ask a yes-no-question."""
     answer = input(f"{question} [y/N] ")
     if answer in ["y", "Y"]:
         return True
@@ -50,34 +61,61 @@ def ask_yes_no(question):
 
 
 class MPlug:
-    MPV_SCRIPT_DIR_DIR = "mpv_script_dir"
-    MPV_SCRIPT_DIR = "mpv_script_directory.json"
-    MPV_SCRIPT_DIR_REPO = "https://github.com/Nudin/mpv-script-directory.git"
+    """Plugin Manager for mpv.
+
+    MPlug can install, update and uninstall scripts, shaders, or other tools to
+    enhance the video player mpv. It is based on the `mpv script directory`,
+    that ideally contains all known scripts with machine readable metadata to
+    install them. The git repository of the script directory is cloned into a
+    subdirectory of the working directory and updated by hand (update()) or
+    after 30 days.
+
+    When installing a plugin it is downloaded (usually via git) into a
+    subdirectory of the working directory. Symbolic Links to the scrip files
+    are then created in the folders that mpv expects them to be. This way
+    plugins can be easily disabled or updated and the directories stay clear
+    and uncluttered.
+    """
+
+    directory_foldername = "mpv_script_dir"
+    directory_filename = "mpv_script_directory.json"
+    directory_remoteurl = "https://github.com/Nudin/mpv-script-directory.git"
 
     def __init__(self):
-        self.get_dirs()
-        script_dir_file = self.script_dir_repo / self.MPV_SCRIPT_DIR
-        if not self.script_dir_repo.exists():
+        """Initialise Plugin Manager.
+
+        Clone the script directory if not already available, update it if it
+        hasn't been updated since more then 30 days. Then read the directory.
+        """
+        self.__get_dirs__()
+        script_dir_file = self.directory_folder / self.directory_filename
+        if not self.directory_folder.exists():
             self.update()
         else:
             age = datetime.now().timestamp() - script_dir_file.stat().st_mtime
             if age > 60 * 60 * 24 * 30:
                 self.update()
         with open(script_dir_file) as f:
-            self.script_dir = json.load(f)
+            self.script_directory = json.load(f)
 
     def update(self):
-        print(f"Updating {self.MPV_SCRIPT_DIR}")
-        self.clone_git(self.MPV_SCRIPT_DIR_REPO, self.script_dir_repo)
+        """Get or update the 'mpv script directory'."""
+        print(f"Updating {self.directory_filename}")
+        self.__clone_git__(self.directory_remoteurl, self.directory_folder)
 
-    def uninstall(self, name, remove=True):
-        if name not in self.script_dir:
+    def uninstall(self, script_id: str, remove: bool = True):
+        """Remove or disable a script.
+
+        remove: if True the tools folder will be deleted from disc. If False
+        only remove the symlinks to the files.
+        """
+        if script_id not in self.script_directory:
             print("Not installed")
             exit(10)
             return False
-        script = self.script_dir[name]
+        script = self.script_directory[script_id]
         if "install" not in script:
-            print(f"No installation method for {name}")
+            print(f"No installation method for {script_id}")
             exit(4)
         elif script["install"] == "git":
             gitdir = self.workdir / script["gitdir"]
@@ -85,30 +123,39 @@ class MPlug:
             if remove:
                 shutil.rmtree(gitdir)
             scriptfiles = script.get("scriptfiles", [])
-            self.uninstall_files(scriptfiles)
+            self.__uninstall_files__(scriptfiles)
         else:
             print(
-                f"Can't install {name}: unknown installation method: {script['install']}"
+                f"Can't install {script_id}: unknown installation method: {script['install']}"
             )
             exit(5)
 
-    def install_by_name(self, name):
-        if name in self.script_dir:
+    def install_by_name(self, name: str):
+        """Install a script with the given name or id.
+
+        If there are multiple scripts with the same name the user is asked to
+        choose."""
+        if name in self.script_directory:
             return self.install(name)
         else:
-            scripts = self.find_by_name(name)
-        self.install_from_list(scripts)
+            scripts = []
+            for key, value in self.script_directory.items():
+                if value["name"] == name:
+                    scripts.append(key)
+            return self.install_from_list(scripts)
 
-    def search(self, name):
+    def search(self, seach_string: str):
+        """Search names and descriptions of scripts."""
         scripts = []
-        for key, value in self.script_dir.items():
-            if name in value["name"]:
+        for key, value in self.script_directory.items():
+            if seach_string in value["name"]:
                 scripts.append(key)
-            elif name in value["desc"]:
+            elif seach_string in value["desc"]:
                 scripts.append(key)
         self.install_from_list(scripts)
 
-    def install_from_list(self, scripts):
+    def install_from_list(self, scripts: List[str]):
+        """Ask the user which of the scripts should be installed."""
         if len(scripts) == 0:
             print(f"Script {name} not known")
             exit(3)
@@ -124,33 +171,34 @@ class MPlug:
             else:
                 exit(0)
 
-    def install(self, name):
-        script = self.script_dir[name]
+    def install(self, script_id: str):
+        """Install the script with the given script id."""
+        script = self.script_directory[script_id]
 
         if "install" not in script:
-            print(f"No installation method for {name}")
+            print(f"No installation method for {script_id}")
             exit(4)
         elif script["install"] == "git":
             gitdir = self.workdir / script["gitdir"]
             repourl = script["git"]
             scriptfiles = script.get("scriptfiles", [])
-            self.clone_git(repourl, gitdir)
-            self.install_files(gitdir, scriptfiles)
+            self.__clone_git__(repourl, gitdir)
+            self.__install_files__(gitdir, scriptfiles)
         else:
             print(
-                f"Can't install {name}: unknown installation method: {script['install']}"
+                f"Can't install {script_id}: unknown installation method: {script['install']}"
             )
             exit(5)
 
-    def find_by_name(self, name):
-        results = []
-        for key, value in self.script_dir.items():
-            if value["name"] == name:
-                results.append(key)
-        return results
+    def upgrade(self):
+        """Upgrade all repositories in the working directory."""
+        for gitdir in self.workdir.glob("*/*"):
+            repo = Repo(gitdir)
+            repo.remote().pull()
 
-    # Find out and create directories
-    def get_dirs(self):
+    def __get_dirs__(self):
+        """Find the directory paths by using XDG environment variables or
+        hardcoded fallbacks. Create working directory if it does not exist."""
         xdg_data = os.environ.get("XDG_DATA_HOME")
         if xdg_data:
             self.workdir = Path(xdg_data) / "mplug"
@@ -165,10 +213,10 @@ class MPlug:
             self.shaderdir = Path.home() / ".config" / "mpv" / "shaders"
         if not self.workdir.exists():
             os.mkdir(self.workdir)
-        self.script_dir_repo = self.workdir / self.MPV_SCRIPT_DIR_DIR
+        self.directory_folder = self.workdir / self.directory_foldername
 
-    # Clone repo
-    def clone_git(self, repourl, gitdir):
+    def __clone_git__(self, repourl: str, gitdir: Path) -> Repo:
+        """Clone or update a repository into a given folder."""
         if gitdir.exists():
             repo = Repo(gitdir)
             repo.remote().pull()
@@ -176,13 +224,8 @@ class MPlug:
             repo = Repo.clone_from(repourl, gitdir)
         return repo
 
-    def upgrade(self):
-        for gitdir in self.workdir.glob("*/*"):
-            repo = Repo(gitdir)
-            repo.remote().pull()
-
-    # Install all script files as symlinks
-    def install_files(self, srcdir, scriptfiles):
+    def __install_files__(self, srcdir: Path, scriptfiles: List[str]):
+        """Install all scriptfiles as symlinks into the corresponding folder."""
         if not self.scriptdir.exists():
             os.mkdir(self.scriptdir)
         for file in scriptfiles:
@@ -193,14 +236,15 @@ class MPlug:
                 continue
             os.symlink(src, dst)
 
-    def uninstall_files(self, scriptfiles):
+    def __uninstall_files__(self, scriptfiles: List[str]):
+        """Remove symlinks."""
         for file in scriptfiles:
             dst = self.scriptdir / file
             print(f"Removing {dst}")
             os.remove(dst)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # noqa: C901
     if len(sys.argv) < 2:
         exit(0)
     operation = sys.argv[1]
@@ -215,7 +259,7 @@ if __name__ == "__main__":
     ]:
         exit(1)
 
-    if operation in ["install", "uninstall", "search"] and len(sys.argv) < 3:
+    if operation in ["install", "uninstall", "search", "disable"] and len(sys.argv) < 3:
         exit(2)
 
     # Load script directory
@@ -223,16 +267,17 @@ if __name__ == "__main__":
 
     if operation == "install":
         name = sys.argv[2]
-        plug.find_install(name)
+        plug.install_by_name(name)
     elif operation == "uninstall":
         name = sys.argv[2]
         plug.uninstall(name)
-    if operation == "search":
+    elif operation == "search":
         name = sys.argv[2]
         plug.search(name)
+    elif operation == "disable":
+        name = sys.argv[2]
+        plug.uninstall(name, remove=False)
     elif operation == "update":
         plug.update()
     elif operation == "upgrade":
         plug.upgrade()
-    elif operation == "disable":
-        plug.uninstall(name, remove=False)
