@@ -92,25 +92,37 @@ class MPlug:
             )
             exit(5)
 
-    def find_install(self, name):
+    def install_by_name(self, name):
         if name in self.script_dir:
             return self.install(name)
         else:
-            scripts = self.find(name)
-            if len(scripts) == 0:
-                print(f"Script {name} not known")
-                exit(3)
-            elif len(scripts) == 1:
-                if ask_yes_no(f"Install {scripts[0]}?"):
-                    self.install(scripts[0])
-                else:
-                    exit(0)
+            scripts = self.find_by_name(name)
+        self.install_from_list(scripts)
+
+    def search(self, name):
+        scripts = []
+        for key, value in self.script_dir.items():
+            if name in value["name"]:
+                scripts.append(key)
+            elif name in value["desc"]:
+                scripts.append(key)
+        self.install_from_list(scripts)
+
+    def install_from_list(self, scripts):
+        if len(scripts) == 0:
+            print(f"Script {name} not known")
+            exit(3)
+        elif len(scripts) == 1:
+            if ask_yes_no(f"Install {scripts[0]}?"):
+                self.install(scripts[0])
             else:
-                choise = ask_num("Found multiple scripts:", scripts)
-                if choise:
-                    self.install(choise)
-                else:
-                    exit(0)
+                exit(0)
+        else:
+            choise = ask_num("Found multiple scripts:", scripts)
+            if choise:
+                self.install(choise)
+            else:
+                exit(0)
 
     def install(self, name):
         script = self.script_dir[name]
@@ -130,7 +142,7 @@ class MPlug:
             )
             exit(5)
 
-    def find(self, name):
+    def find_by_name(self, name):
         results = []
         for key, value in self.script_dir.items():
             if value["name"] == name:
@@ -193,10 +205,17 @@ if __name__ == "__main__":
         exit(0)
     operation = sys.argv[1]
 
-    if operation not in ["install", "upgrade", "uninstall", "update", "disable"]:
+    if operation not in [
+        "install",
+        "upgrade",
+        "uninstall",
+        "update",
+        "disable",
+        "search",
+    ]:
         exit(1)
 
-    if operation in ["install", "uninstall"] and len(sys.argv) < 3:
+    if operation in ["install", "uninstall", "search"] and len(sys.argv) < 3:
         exit(2)
 
     # Load script directory
@@ -208,6 +227,9 @@ if __name__ == "__main__":
     elif operation == "uninstall":
         name = sys.argv[2]
         plug.uninstall(name)
+    if operation == "search":
+        name = sys.argv[2]
+        plug.search(name)
     elif operation == "update":
         plug.update()
     elif operation == "upgrade":
