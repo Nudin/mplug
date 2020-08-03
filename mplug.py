@@ -167,10 +167,11 @@ class MPlug:
     def search(self, seach_string: str):
         """Search names and descriptions of scripts."""
         scripts = []
+        seach_string = seach_string.lower()
         for key, value in self.script_directory.items():
-            if seach_string in value["name"]:
+            if seach_string in value.get("name", ""):
                 scripts.append(key)
-            elif seach_string in value["desc"]:
+            elif seach_string in value.get("desc", "").lower():
                 scripts.append(key)
         self.install_from_list(scripts)
 
