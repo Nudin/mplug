@@ -39,7 +39,7 @@ def ask_num(question: str, options: List[str]) -> Optional[str]:
     """
     print(question)
     for i, opt in enumerate(options):
-        print(f"[i] {opt}")
+        print(f"[{i}] {opt}")
     answer = input("> ")
     try:
         num = int(answer)
