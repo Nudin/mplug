@@ -26,6 +26,26 @@ from typing import List, Optional
 
 from git import Repo
 
+NAME = "mplug"
+VERSION = "0.1"
+
+
+def print_help():
+    print(
+        f"""{NAME} {VERSION}
+
+Usage: {NAME} command
+
+Available commands:
+- install NAME|ID          Install a plugin by name or plugin-id
+- uninstall ID             Remove a plugin from the system
+- disable ID               Disable a plugin without deleting it from the system
+- search TEXT              Search for a plugin by name and description
+- update                   Update the list of available plugins
+- upgrade                  Update all plugins
+    """
+    )
+
 
 def ask_num(question: str, options: List[str]) -> Optional[str]:
     """Ask to choose from a number of options.
@@ -246,6 +266,7 @@ class MPlug:
 
 if __name__ == "__main__":  # noqa: C901
     if len(sys.argv) < 2:
+        print_help()
         exit(0)
     operation = sys.argv[1]
 
@@ -257,9 +278,11 @@ if __name__ == "__main__":  # noqa: C901
         "disable",
         "search",
     ]:
+        print_help()
         exit(1)
 
     if operation in ["install", "uninstall", "search", "disable"] and len(sys.argv) < 3:
+        print_help()
         exit(2)
 
     # Load script directory
@@ -281,3 +304,5 @@ if __name__ == "__main__":  # noqa: C901
         plug.update()
     elif operation == "upgrade":
         plug.upgrade()
+    else:
+        print_help()
