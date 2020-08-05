@@ -43,6 +43,7 @@ Available commands:
 - search TEXT              Search for a plugin by name and description
 - update                   Update the list of available plugins
 - upgrade                  Update all plugins
+- list-installed           List all plugins installed with {NAME}
     """
     )
 
@@ -94,7 +95,7 @@ class MPlug:
     subdirectory of the working directory. Symbolic Links to the scrip files
     are then created in the folders that mpv expects them to be. This way
     plugins can be easily disabled or updated and the directories stay clear
-    and uncluttered.
+    and uncluttered. A file is used to keep a list of all installed plugins.
     """
 
     directory_foldername = "mpv_script_dir"
@@ -117,6 +118,24 @@ class MPlug:
                 self.update()
         with open(script_dir_file) as f:
             self.script_directory = json.load(f)
+        self.statefile = self.workdir / "installed_plugins"
+        try:
+            with open(self.statefile) as f:
+                self.installed_scripts = json.load(f)
+        except json.JSONDecodeError as e:
+            print("Failed to load mplug file %s: %e", self.statefile, e)
+            exit(11)
+        except FileNotFoundError:
+            self.installed_scripts = {}
+
+    def __del__(self):
+        """Write installed plugins on exit."""
+        try:
+            with open(self.statefile, "w") as f:
+                json.dump(self.installed_scripts, f)
+        except Exception:
+            # If an error occurs the interpreter will shutdown before calling del
+            pass
 
     def update(self):
         """Get or update the 'mpv script directory'."""
@@ -129,11 +148,11 @@ class MPlug:
         remove: if True the tools folder will be deleted from disc. If False
         only remove the symlinks to the files.
         """
-        if script_id not in self.script_directory:
+        if script_id not in self.installed_scripts:
             print("Not installed")
             exit(10)
             return False
-        script = self.script_directory[script_id]
+        script = self.installed_scripts[script_id]
         if "install" not in script:
             print(f"No installation method for {script_id}")
             exit(4)
@@ -149,6 +168,7 @@ class MPlug:
                 f"Can't install {script_id}: unknown installation method: {script['install']}"
             )
             exit(5)
+        del self.installed_scripts[script_id]
 
     def install_by_name(self, name: str):
         """Install a script with the given name or id.
@@ -210,12 +230,18 @@ class MPlug:
                 f"Can't install {script_id}: unknown installation method: {script['install']}"
             )
             exit(5)
+        self.installed_scripts[script_id] = script.copy()
+        self.installed_scripts[script_id]["install_date"] = datetime.now().isoformat()
 
     def upgrade(self):
         """Upgrade all repositories in the working directory."""
         for gitdir in self.workdir.glob("*/*"):
             repo = Repo(gitdir)
             repo.remote().pull()
+
+    def list_installed(self):
+        """List all installed scripts"""
+        print("\n".join(self.installed_scripts.keys()))
 
     def __get_dirs__(self):
         """Find the directory paths by using XDG environment variables or
@@ -278,6 +304,7 @@ if __name__ == "__main__":  # noqa: C901
         "update",
         "disable",
         "search",
+        "list-installed",
     ]:
         print_help()
         exit(1)
@@ -305,5 +332,11 @@ if __name__ == "__main__":  # noqa: C901
         plug.update()
     elif operation == "upgrade":
         plug.upgrade()
+    elif operation == "list-installed":
+        plug.list_installed()
     else:
         print_help()
+
+    # Necessary since otherwise will be deleted in shutdown, where open is not
+    # available anymore.
+    del plug
