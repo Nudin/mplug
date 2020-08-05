@@ -17,6 +17,7 @@
 
 
 import json
+import logging
 import os
 import shutil
 import sys
@@ -46,6 +47,9 @@ Available commands:
 - list-installed           List all plugins installed with {NAME}
     """
     )
+
+
+logging.basicConfig(level="INFO", format="%(message)s")
 
 
 def ask_num(question: str, options: List[str]) -> Optional[str]:
@@ -123,7 +127,7 @@ class MPlug:
             with open(self.statefile) as f:
                 self.installed_scripts = json.load(f)
         except json.JSONDecodeError as e:
-            print("Failed to load mplug file %s: %e", self.statefile, e)
+            logging.error("Failed to load mplug file %s: %e", self.statefile, e)
             exit(11)
         except FileNotFoundError:
             self.installed_scripts = {}
@@ -139,7 +143,7 @@ class MPlug:
 
     def update(self):
         """Get or update the 'mpv script directory'."""
-        print(f"Updating {self.directory_filename}")
+        logging.info(f"Updating {self.directory_filename}")
         self.__clone_git__(self.directory_remoteurl, self.directory_folder)
 
     def uninstall(self, script_id: str, remove: bool = True):
@@ -149,22 +153,22 @@ class MPlug:
         only remove the symlinks to the files.
         """
         if script_id not in self.installed_scripts:
-            print("Not installed")
+            logging.error("Not installed")
             exit(10)
             return False
         script = self.installed_scripts[script_id]
         if "install" not in script:
-            print(f"No installation method for {script_id}")
+            logging.error(f"No installation method for {script_id}")
             exit(4)
         elif script["install"] == "git":
             gitdir = self.workdir / script["gitdir"]
-            print(f"Remove directory {gitdir}")
+            logging.info(f"Remove directory {gitdir}")
             if remove:
                 shutil.rmtree(gitdir)
             scriptfiles = script.get("scriptfiles", [])
             self.__uninstall_files__(scriptfiles)
         else:
-            print(
+            logging.error(
                 f"Can't install {script_id}: unknown installation method: {script['install']}"
             )
             exit(5)
@@ -198,7 +202,7 @@ class MPlug:
     def install_from_list(self, scripts: List[str]):
         """Ask the user which of the scripts should be installed."""
         if len(scripts) == 0:
-            print(f"Script {name} not known")
+            logging.error(f"Script {name} not known")
             exit(3)
         elif len(scripts) == 1:
             if ask_yes_no(f"Install {scripts[0]}?"):
@@ -217,7 +221,7 @@ class MPlug:
         script = self.script_directory[script_id]
 
         if "install" not in script:
-            print(f"No installation method for {script_id}")
+            logging.error(f"No installation method for {script_id}")
             exit(4)
         elif script["install"] == "git":
             gitdir = self.workdir / script["gitdir"]
@@ -226,7 +230,7 @@ class MPlug:
             self.__clone_git__(repourl, gitdir)
             self.__install_files__(gitdir, scriptfiles)
         else:
-            print(
+            logging.error(
                 f"Can't install {script_id}: unknown installation method: {script['install']}"
             )
             exit(5)
@@ -279,7 +283,7 @@ class MPlug:
             src = srcdir / file
             dst = self.scriptdir / file
             if dst.exists():
-                print("File already exists:", dst)
+                logging.info("File already exists:", dst)
                 continue
             os.symlink(src, dst)
 
@@ -287,7 +291,7 @@ class MPlug:
         """Remove symlinks."""
         for file in scriptfiles:
             dst = self.scriptdir / file
-            print(f"Removing {dst}")
+            logging.info(f"Removing {dst}")
             os.remove(dst)
 
 
