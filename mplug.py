@@ -162,11 +162,26 @@ class MPlug:
             exit(4)
         elif script["install"] == "git":
             gitdir = self.workdir / script["gitdir"]
-            logging.info(f"Remove directory {gitdir}")
-            if remove:
-                shutil.rmtree(gitdir)
             scriptfiles = script.get("scriptfiles", [])
-            self.__uninstall_files__(scriptfiles)
+            shaderfiles = script.get("shaderfiles", [])
+            fontfiles = script.get("fontfiles", [])
+            scriptoptfiles = script.get("scriptoptfiles", [])
+            exefiles = script.get("exefiles", [])
+            exedir = script.get("exedir")
+            self.__uninstall_files__(scriptfiles, self.scriptdir)
+            self.__uninstall_files__(scriptoptfiles, self.scriptoptsdir)
+            self.__uninstall_files__(fontfiles, self.fontsdir)
+            self.__uninstall_files__(shaderfiles, self.shaderdir)
+            if exefiles:
+                if exedir:
+                    self.__uninstall_files__(exefiles, exedir)
+                else:
+                    logging.error(
+                        "Can't uninstall files %s: unknown location.", exefiles
+                    )
+            if remove:
+                logging.info(f"Remove directory {gitdir}")
+                shutil.rmtree(gitdir)
         else:
             logging.error(
                 f"Can't install {script_id}: unknown installation method: {script['install']}"
@@ -218,7 +233,7 @@ class MPlug:
 
     def install(self, script_id: str):
         """Install the script with the given script id."""
-        script = self.script_directory[script_id]
+        script = self.script_directory[script_id].copy()
 
         if "install" not in script:
             logging.error(f"No installation method for {script_id}")
@@ -227,15 +242,42 @@ class MPlug:
             gitdir = self.workdir / script["gitdir"]
             repourl = script["git"]
             scriptfiles = script.get("scriptfiles", [])
+            shaderfiles = script.get("shaderfiles", [])
+            fontfiles = script.get("fontfiles", [])
+            scriptoptfiles = script.get("scriptoptfiles", [])
+            exefiles = script.get("exefiles", [])
             self.__clone_git__(repourl, gitdir)
-            self.__install_files__(gitdir, scriptfiles)
+            self.__install_files__(
+                srcdir=gitdir, filelist=scriptfiles, dstdir=self.scriptdir
+            )
+            self.__install_files__(
+                srcdir=gitdir, filelist=shaderfiles, dstdir=self.shaderdir
+            )
+            self.__install_files__(
+                srcdir=gitdir, filelist=fontfiles, dstdir=self.fontsdir
+            )
+            self.__install_files__(
+                srcdir=gitdir, filelist=scriptoptfiles, dstdir=self.scriptoptsdir
+            )
+            if exefiles:
+                pathstr = input("Where to put executable files? [~/bin]\n> ").strip()
+                if pathstr == "":
+                    exedir = Path.home() / "bin"
+                else:
+                    exedir = Path(pathstr).expanduser().absolute()
+                logging.info("Placing executables in %s", str(exedir))
+                self.__install_files__(srcdir=gitdir, filelist=exefiles, dstdir=exedir)
+                script["execdir"] = str(exedir)
+
         else:
             logging.error(
                 f"Can't install {script_id}: unknown installation method: {script['install']}"
             )
             exit(5)
-        self.installed_scripts[script_id] = script.copy()
-        self.installed_scripts[script_id]["install_date"] = datetime.now().isoformat()
+        if "install-notes" in script:
+            print(" " + script["install-notes"].replace("\n", "\n "))
+        script["install_date"] = datetime.now().isoformat()
+        self.installed_scripts[script_id] = script
 
     def upgrade(self):
         """Upgrade all repositories in the working directory."""
@@ -250,18 +292,30 @@ class MPlug:
     def __get_dirs__(self):
         """Find the directory paths by using XDG environment variables or
         hardcoded fallbacks. Create working directory if it does not exist."""
-        xdg_data = os.environ.get("XDG_DATA_HOME")
+        xdg_data = os.getenv("XDG_DATA_HOME")
+        xdg_conf = os.getenv("XDG_CONFIG_HOME")
+        appdata = os.getenv("APPDATA")
+        mpv_home = os.getenv("MPV_HOME")
+        # Directory for MPlug this is where all script files will be stored
         if xdg_data:
             self.workdir = Path(xdg_data) / "mplug"
+        elif appdata:
+            self.mpvdir = Path(appdata) / "mplug"
         else:
             self.workdir = Path.home() / ".mplug"
-        xdg_conf = os.environ.get("XDG_CONFIG_HOME")
-        if xdg_conf:
-            self.scriptdir = Path(xdg_conf) / "mpv" / "scripts"
-            self.shaderdir = Path(xdg_conf) / "mpv" / "shaders"
+        # MPV directory usually ~/.config/mpv on Linux/Mac
+        if mpv_home:
+            self.mpvdir = Path(mpv_home)
+        elif xdg_conf:
+            self.mpvdir = Path(xdg_conf) / "mpv"
+        elif appdata:
+            self.mpvdir = Path(appdata) / "mpv"
         else:
-            self.scriptdir = Path.home() / ".config" / "mpv" / "scripts"
-            self.shaderdir = Path.home() / ".config" / "mpv" / "shaders"
+            self.mpvdir = Path.home() / ".mpv"
+        self.scriptdir = self.mpvdir / "scripts"
+        self.shaderdir = self.mpvdir / "shaders"
+        self.scriptoptsdir = self.mpvdir / "script-opts"
+        self.fontsdir = self.mpvdir / "fonts"
         if not self.workdir.exists():
             os.mkdir(self.workdir)
         self.directory_folder = self.workdir / self.directory_foldername
@@ -275,22 +329,24 @@ class MPlug:
             repo = Repo.clone_from(repourl, gitdir)
         return repo
 
-    def __install_files__(self, srcdir: Path, scriptfiles: List[str]):
+    def __install_files__(self, srcdir: Path, filelist: List[str], dstdir: Path):
         """Install all scriptfiles as symlinks into the corresponding folder."""
-        if not self.scriptdir.exists():
-            os.mkdir(self.scriptdir)
-        for file in scriptfiles:
+        if not dstdir.exists():
+            os.mkdir(dstdir)
+        for file in filelist:
             src = srcdir / file
-            dst = self.scriptdir / file
+            filename = Path(file).name
+            dst = dstdir / filename
             if dst.exists():
-                logging.info("File already exists:", dst)
+                logging.info("File already exists: %s", dst)
                 continue
+            logging.debug("Copying file %s to %s", filename, dst)
             os.symlink(src, dst)
 
-    def __uninstall_files__(self, scriptfiles: List[str]):
+    def __uninstall_files__(self, filelist: List[str], folder: Path):
         """Remove symlinks."""
-        for file in scriptfiles:
-            dst = self.scriptdir / file
+        for file in filelist:
+            dst = folder / file
             logging.info(f"Removing {dst}")
             os.remove(dst)
 
