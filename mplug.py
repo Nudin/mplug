@@ -35,7 +35,7 @@ def print_help():
     print(
         f"""{NAME} {VERSION}
 
-Usage: {NAME} command
+Usage: {NAME} [-v] command
 
 Available commands:
 - install NAME|ID          Install a plugin by name or plugin-id
@@ -119,6 +119,7 @@ class MPlug:
         else:
             age = datetime.now().timestamp() - script_dir_file.stat().st_mtime
             if age > 60 * 60 * 24 * 30:
+                logging.debug("Update mpv_script_directory due to it's age")
                 self.update()
         with open(script_dir_file) as f:
             self.script_directory = json.load(f)
@@ -130,6 +131,7 @@ class MPlug:
             logging.error("Failed to load mplug file %s: %e", self.statefile, e)
             exit(11)
         except FileNotFoundError:
+            logging.debug("No packages installed yet.")
             self.installed_scripts = {}
 
     def __del__(self):
@@ -137,6 +139,7 @@ class MPlug:
         try:
             with open(self.statefile, "w") as f:
                 json.dump(self.installed_scripts, f)
+                logging.debug("Saving list of installed scripts")
         except Exception:
             # If an error occurs the interpreter will shutdown before calling del
             pass
@@ -161,6 +164,7 @@ class MPlug:
             logging.error(f"No installation method for {script_id}")
             exit(4)
         elif script["install"] == "git":
+            logging.debug("Remove links of {script_id}")
             gitdir = self.workdir / script["gitdir"]
             scriptfiles = script.get("scriptfiles", [])
             shaderfiles = script.get("shaderfiles", [])
@@ -174,6 +178,7 @@ class MPlug:
             self.__uninstall_files__(shaderfiles, self.shaderdir)
             if exefiles:
                 if exedir:
+                    logging.debug("Remove link to executables in %s", exedir)
                     self.__uninstall_files__(exefiles, exedir)
                 else:
                     logging.error(
@@ -216,6 +221,7 @@ class MPlug:
 
     def install_from_list(self, scripts: List[str]):
         """Ask the user which of the scripts should be installed."""
+        logging.debug("Found %i potential scripts", len(scripts))
         if len(scripts) == 0:
             logging.error(f"Script {name} not known")
             exit(3)
@@ -246,6 +252,7 @@ class MPlug:
             fontfiles = script.get("fontfiles", [])
             scriptoptfiles = script.get("scriptoptfiles", [])
             exefiles = script.get("exefiles", [])
+            logging.debug("Clone git repo %s to %s", repourl, gitdir)
             self.__clone_git__(repourl, gitdir)
             self.__install_files__(
                 srcdir=gitdir, filelist=scriptfiles, dstdir=self.scriptdir
@@ -282,11 +289,13 @@ class MPlug:
     def upgrade(self):
         """Upgrade all repositories in the working directory."""
         for gitdir in self.workdir.glob("*/*"):
+            logging.info("Updating repo in %s", gitdir)
             repo = Repo(gitdir)
             repo.remote().pull()
 
     def list_installed(self):
         """List all installed scripts"""
+        logging.debug("%i installed scripts", len(self.installed_scripts))
         print("\n".join(self.installed_scripts.keys()))
 
     def __get_dirs__(self):
@@ -312,18 +321,25 @@ class MPlug:
             self.mpvdir = Path(appdata) / "mpv"
         else:
             self.mpvdir = Path.home() / ".mpv"
+            logging.info(
+                "No environment variable found, guessing %s as mpv config folder.",
+                self.mpvdir,
+            )
+        logging.debug("mpvdir: %s", self.mpvdir)
         self.scriptdir = self.mpvdir / "scripts"
         self.shaderdir = self.mpvdir / "shaders"
         self.scriptoptsdir = self.mpvdir / "script-opts"
         self.fontsdir = self.mpvdir / "fonts"
         if not self.workdir.exists():
-            os.mkdir(self.workdir)
+            logging.DEBUG("Create workdir %s", self.workdir)
+            os.makedirs(self.workdir)
         self.directory_folder = self.workdir / self.directory_foldername
 
     def __clone_git__(self, repourl: str, gitdir: Path) -> Repo:
         """Clone or update a repository into a given folder."""
         if gitdir.exists():
             repo = Repo(gitdir)
+            logging.debug("Repo already cloned, pull latest changes instead.")
             repo.remote().pull()
         else:
             repo = Repo.clone_from(repourl, gitdir)
@@ -332,7 +348,8 @@ class MPlug:
     def __install_files__(self, srcdir: Path, filelist: List[str], dstdir: Path):
         """Install all scriptfiles as symlinks into the corresponding folder."""
         if not dstdir.exists():
-            os.mkdir(dstdir)
+            logging.debug("Create directory %s", dstdir)
+            os.makedirs(dstdir)
         for file in filelist:
             src = srcdir / file
             filename = Path(file).name
@@ -346,12 +363,23 @@ class MPlug:
     def __uninstall_files__(self, filelist: List[str], folder: Path):
         """Remove symlinks."""
         for file in filelist:
-            dst = folder / file
+            filename = Path(file).name
+            dst = folder / filename
             logging.info(f"Removing {dst}")
+            if not dst.is_symlink:
+                logging.critical(
+                    "File %s is not a symlink! It apparently was not installed by %s. Aborting.",
+                    dst,
+                    NAME,
+                )
+                exit(12)
             os.remove(dst)
 
 
 if __name__ == "__main__":  # noqa: C901
+    if len(sys.argv) > 1 and sys.argv[1] == "-v":
+        logging.getLogger().setLevel("DEBUG")
+        del sys.argv[1]
     if len(sys.argv) < 2:
         print_help()
         exit(0)
