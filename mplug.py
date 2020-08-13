@@ -85,6 +85,20 @@ def ask_yes_no(question: str) -> bool:
     return False
 
 
+def ask_path(question: str, default: Path) -> Path:
+    """Ask the user for a file path, with a fallback if the user does not enter
+    anything.
+
+    question: Text to display on promt
+    default: Default path, returned if user gives no input"""
+    pathstr = input(f"{question} [{default}]\n> ").strip()
+    if pathstr == "":
+        path = default
+    else:
+        path = Path(pathstr)
+    return path.expanduser().absolute
+
+
 class MPlug:
     """Plugin Manager for mpv.
 
@@ -113,6 +127,9 @@ class MPlug:
         hasn't been updated since more then 30 days. Then read the directory.
         """
         self.__get_dirs__()
+        if not self.workdir.exists():
+            logging.debug("Create workdir %s", self.workdir)
+            os.makedirs(self.workdir)
         script_dir_file = self.directory_folder / self.directory_filename
         if not self.directory_folder.exists():
             self.update()
@@ -129,20 +146,16 @@ class MPlug:
                 self.installed_scripts = json.load(f)
         except json.JSONDecodeError as e:
             logging.error("Failed to load mplug file %s: %e", self.statefile, e)
-            exit(11)
+            sys.exit(11)
         except FileNotFoundError:
             logging.debug("No packages installed yet.")
             self.installed_scripts = {}
 
-    def __del__(self):
+    def save_state_to_disk(self):
         """Write installed plugins on exit."""
-        try:
-            with open(self.statefile, "w") as f:
-                json.dump(self.installed_scripts, f)
-                logging.debug("Saving list of installed scripts")
-        except Exception:
-            # If an error occurs the interpreter will shutdown before calling del
-            pass
+        with open(self.statefile, "w") as f:
+            json.dump(self.installed_scripts, f)
+            logging.debug("Saving list of installed scripts")
 
     def update(self):
         """Get or update the 'mpv script directory'."""
@@ -157,12 +170,11 @@ class MPlug:
         """
         if script_id not in self.installed_scripts:
             logging.error("Not installed")
-            exit(10)
-            return False
+            sys.exit(10)
         script = self.installed_scripts[script_id]
         if "install" not in script:
             logging.error(f"No installation method for {script_id}")
-            exit(4)
+            sys.exit(4)
         elif script["install"] == "git":
             logging.debug("Remove links of {script_id}")
             gitdir = self.workdir / script["gitdir"]
@@ -191,22 +203,22 @@ class MPlug:
             logging.error(
                 f"Can't install {script_id}: unknown installation method: {script['install']}"
             )
-            exit(5)
+            sys.exit(5)
         del self.installed_scripts[script_id]
 
-    def install_by_name(self, name: str):
+    def install_by_name(self, scriptname: str):
         """Install a script with the given name or id.
 
         If there are multiple scripts with the same name the user is asked to
         choose."""
-        if name in self.script_directory:
-            return self.install(name)
+        if scriptname in self.script_directory:
+            return self.install(scriptname)
         else:
             scripts = []
             for key, value in self.script_directory.items():
-                if value["name"] == name:
+                if value["name"] == scriptname:
                     scripts.append(key)
-            return self.install_from_list(scripts)
+            return self.__install_from_list__(scripts)
 
     def search(self, seach_string: str):
         """Search names and descriptions of scripts."""
@@ -217,25 +229,25 @@ class MPlug:
                 scripts.append(key)
             elif seach_string in value.get("desc", "").lower():
                 scripts.append(key)
-        self.install_from_list(scripts)
+        self.__install_from_list__(scripts)
 
-    def install_from_list(self, scripts: List[str]):
+    def __install_from_list__(self, scripts: List[str]):
         """Ask the user which of the scripts should be installed."""
         logging.debug("Found %i potential scripts", len(scripts))
         if len(scripts) == 0:
             logging.error(f"Script {name} not known")
-            exit(3)
+            sys.exit(3)
         elif len(scripts) == 1:
             if ask_yes_no(f"Install {scripts[0]}?"):
                 self.install(scripts[0])
             else:
-                exit(0)
+                sys.exit(0)
         else:
             choise = ask_num("Found multiple scripts:", scripts)
             if choise:
                 self.install(choise)
             else:
-                exit(0)
+                sys.exit(0)
 
     def install(self, script_id: str):
         """Install the script with the given script id."""
@@ -243,7 +255,7 @@ class MPlug:
 
         if "install" not in script:
             logging.error(f"No installation method for {script_id}")
-            exit(4)
+            sys.exit(4)
         elif script["install"] == "git":
             gitdir = self.workdir / script["gitdir"]
             repourl = script["git"]
@@ -267,20 +279,15 @@ class MPlug:
                 srcdir=gitdir, filelist=scriptoptfiles, dstdir=self.scriptoptsdir
             )
             if exefiles:
-                pathstr = input("Where to put executable files? [~/bin]\n> ").strip()
-                if pathstr == "":
-                    exedir = Path.home() / "bin"
-                else:
-                    exedir = Path(pathstr).expanduser().absolute()
+                exedir = ask_path("Where to put executable files?", Path("~/bin"))
                 logging.info("Placing executables in %s", str(exedir))
                 self.__install_files__(srcdir=gitdir, filelist=exefiles, dstdir=exedir)
                 script["execdir"] = str(exedir)
-
         else:
             logging.error(
                 f"Can't install {script_id}: unknown installation method: {script['install']}"
             )
-            exit(5)
+            sys.exit(5)
         if "install-notes" in script:
             print(" " + script["install-notes"].replace("\n", "\n "))
         script["install_date"] = datetime.now().isoformat()
@@ -299,8 +306,8 @@ class MPlug:
         print("\n".join(self.installed_scripts.keys()))
 
     def __get_dirs__(self):
-        """Find the directory paths by using XDG environment variables or
-        hardcoded fallbacks. Create working directory if it does not exist."""
+        """Find the directory paths by using environment variables or
+        hardcoded fallbacks."""
         xdg_data = os.getenv("XDG_DATA_HOME")
         xdg_conf = os.getenv("XDG_CONFIG_HOME")
         appdata = os.getenv("APPDATA")
@@ -330,12 +337,10 @@ class MPlug:
         self.shaderdir = self.mpvdir / "shaders"
         self.scriptoptsdir = self.mpvdir / "script-opts"
         self.fontsdir = self.mpvdir / "fonts"
-        if not self.workdir.exists():
-            logging.DEBUG("Create workdir %s", self.workdir)
-            os.makedirs(self.workdir)
         self.directory_folder = self.workdir / self.directory_foldername
 
-    def __clone_git__(self, repourl: str, gitdir: Path) -> Repo:
+    @staticmethod
+    def __clone_git__(repourl: str, gitdir: Path) -> Repo:
         """Clone or update a repository into a given folder."""
         if gitdir.exists():
             repo = Repo(gitdir)
@@ -345,7 +350,8 @@ class MPlug:
             repo = Repo.clone_from(repourl, gitdir)
         return repo
 
-    def __install_files__(self, srcdir: Path, filelist: List[str], dstdir: Path):
+    @staticmethod
+    def __install_files__(srcdir: Path, filelist: List[str], dstdir: Path):
         """Install all scriptfiles as symlinks into the corresponding folder."""
         if not dstdir.exists():
             logging.debug("Create directory %s", dstdir)
@@ -360,7 +366,8 @@ class MPlug:
             logging.debug("Copying file %s to %s", filename, dst)
             os.symlink(src, dst)
 
-    def __uninstall_files__(self, filelist: List[str], folder: Path):
+    @staticmethod
+    def __uninstall_files__(filelist: List[str], folder: Path):
         """Remove symlinks."""
         for file in filelist:
             filename = Path(file).name
@@ -372,18 +379,44 @@ class MPlug:
                     dst,
                     NAME,
                 )
-                exit(12)
+                sys.exit(12)
             os.remove(dst)
 
 
-if __name__ == "__main__":  # noqa: C901
-    if len(sys.argv) > 1 and sys.argv[1] == "-v":
+def main(operation: str, name: Optional[str] = None):
+    # Load script directory
+    plug = MPlug()
+
+    if operation == "install":
+        plug.install_by_name(name)
+    elif operation == "uninstall":
+        plug.uninstall(name)
+    elif operation == "search":
+        plug.search(name)
+    elif operation == "disable":
+        plug.uninstall(name, remove=False)
+    elif operation == "update":
+        plug.update()
+    elif operation == "upgrade":
+        plug.upgrade()
+    elif operation == "list-installed":
+        plug.list_installed()
+
+    plug.save_state_to_disk()
+
+
+def arg_parse(argv):
+    if len(argv) > 1 and argv[1] == "-v":
         logging.getLogger().setLevel("DEBUG")
-        del sys.argv[1]
-    if len(sys.argv) < 2:
+        del argv[1]
+    if len(argv) < 2:
         print_help()
-        exit(0)
-    operation = sys.argv[1]
+        sys.exit(0)
+    operation = argv[1]
+
+    if operation == "help":
+        print_help()
+        sys.exit(0)
 
     if operation not in [
         "install",
@@ -395,36 +428,18 @@ if __name__ == "__main__":  # noqa: C901
         "list-installed",
     ]:
         print_help()
-        exit(1)
+        sys.exit(1)
 
-    if operation in ["install", "uninstall", "search", "disable"] and len(sys.argv) < 3:
-        print_help()
-        exit(2)
-
-    # Load script directory
-    plug = MPlug()
-
-    if operation == "install":
-        name = sys.argv[2]
-        plug.install_by_name(name)
-    elif operation == "uninstall":
-        name = sys.argv[2]
-        plug.uninstall(name)
-    elif operation == "search":
-        name = sys.argv[2]
-        plug.search(name)
-    elif operation == "disable":
-        name = sys.argv[2]
-        plug.uninstall(name, remove=False)
-    elif operation == "update":
-        plug.update()
-    elif operation == "upgrade":
-        plug.upgrade()
-    elif operation == "list-installed":
-        plug.list_installed()
+    if operation in ["install", "uninstall", "search", "disable"]:
+        if len(argv) < 3:
+            print_help()
+            sys.exit(2)
+        else:
+            name = argv[2]
     else:
-        print_help()
+        name = None
+    return operation, name
 
-    # Necessary since otherwise will be deleted in shutdown, where open is not
-    # available anymore.
-    del plug
+
+if __name__ == "__main__":
+    main(*arg_parse(sys.argv))

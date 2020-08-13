@@ -1,5 +1,5 @@
-MPlug – a pluding manager for mpv
-=================================
+MPlug – a Plugin Manager for MPV
+================================
 
 A plugin manager for mpv to easy install and uninstall mpv scripts and more.
 
@@ -13,13 +13,15 @@ Install and usage
 	- To upgrade database: `./mplug update`
 	- To uninstall a plugin: `./mplug uninstall plugin_id`
 	- To disable a plugin without uninstalling it: `./mplug disable plugin_id`
+	- To search for a plugin `./mplug search term`
+	- To list all installed plugins `./mplug list-installed`
 
 Status & Todo
 -------------
-- [Done] Populate mpv script directory, by scraping wiki
-- [Done] First version of plugin manager
-- [WIP] Add install instructions to mpv scraping directory
-- [TODO] Add Tests and clean up code
-- [TODO] Write a Webinterface to browse plugins
-- [TODO] Write a TUI
-- [TODO] Write a GUI
+- [X] Populate mpv script directory, by scraping wiki
+- [X] First version of plugin manager
+- [X] Write a Webinterface to browse plugins
+- [ ] Add install instructions for all plugins to the [mpv script directory](https://github.com/Nudin/mpv-script-directory)
+- [ ] Add Tests and clean up code
+- [ ] Write a TUI
+- [ ] Write a GUI
