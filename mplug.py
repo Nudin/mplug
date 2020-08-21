@@ -369,7 +369,7 @@ class MPlug:
             logging.debug("Repo already cloned, pull latest changes instead.")
             repo.remote().pull()
         else:
-            repo = Repo.clone_from(repourl, gitdir)
+            repo = Repo.clone_from(repourl, gitdir, multi_options=["--depth 1"])
         return repo
 
     @staticmethod

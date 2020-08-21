@@ -386,7 +386,9 @@ def test_mplug_install_by_id_git(mpl, mock_files):
     }
     gitdir = mpl.workdir / "gitdir"
     mpl.install_by_name(script_id)
-    mock_files.Repo_clone_from.assert_called_with(repo_url, gitdir)
+    mock_files.Repo_clone_from.assert_called_with(
+        repo_url, gitdir, multi_options=["--depth 1"]
+    )
     mock_files.os_symlink.assert_called_once()
     assert mpl.installed_scripts != {}
 
@@ -410,7 +412,9 @@ def fixture_installed_plugin(mpl, mock_files):
     }
     gitdir = mpl.workdir / "gitdir"
     mpl.install_by_name(script_id)
-    mock_files.Repo_clone_from.assert_called_with(repo_url, gitdir)
+    mock_files.Repo_clone_from.assert_called_with(
+        repo_url, gitdir, multi_options=["--depth 1"]
+    )
     mock_files.os_symlink.assert_called_once()
     assert mpl.installed_scripts != {}
     return mpl
@@ -476,7 +480,9 @@ def test_mplug_install_by_id_git_withexe(mpl, mocker, mock_files):
     src_file = script_dir / filename
     dst_file = Path(exedir) / filename
     mpl.install_by_name(script_id)
-    mock_files.Repo_clone_from.assert_called_with(repo_url, script_dir)
+    mock_files.Repo_clone_from.assert_called_with(
+        repo_url, script_dir, multi_options=["--depth 1"]
+    )
     mock_files.os_symlink.assert_called_once_with(src_file, dst_file)
     assert mpl.installed_scripts != {}
     assert mpl.installed_scripts[script_id]["exedir"] == exedir
