@@ -96,7 +96,7 @@ def ask_path(question: str, default: Path) -> Path:
         path = default
     else:
         path = Path(pathstr)
-    return path.expanduser().absolute
+    return path.expanduser().absolute()
 
 
 class MPlug:
@@ -145,7 +145,7 @@ class MPlug:
             with open(self.statefile) as f:
                 self.installed_scripts = json.load(f)
         except json.JSONDecodeError as e:
-            logging.error("Failed to load mplug file %s: %e", self.statefile, e)
+            logging.error("Failed to load mplug file %s: %s", self.statefile, e)
             sys.exit(11)
         except FileNotFoundError:
             logging.debug("No packages installed yet.")
@@ -191,7 +191,7 @@ class MPlug:
             if exefiles:
                 if exedir:
                     logging.debug("Remove link to executables in %s", exedir)
-                    self.__uninstall_files__(exefiles, exedir)
+                    self.__uninstall_files__(exefiles, Path(exedir))
                 else:
                     logging.error(
                         "Can't uninstall files %s: unknown location.", exefiles
@@ -235,7 +235,7 @@ class MPlug:
         """Ask the user which of the scripts should be installed."""
         logging.debug("Found %i potential scripts", len(scripts))
         if len(scripts) == 0:
-            logging.error(f"Script {name} not known")
+            logging.error("No matching scripts found.")
             sys.exit(3)
         elif len(scripts) == 1:
             if ask_yes_no(f"Install {scripts[0]}?"):
@@ -282,7 +282,7 @@ class MPlug:
                 exedir = ask_path("Where to put executable files?", Path("~/bin"))
                 logging.info("Placing executables in %s", str(exedir))
                 self.__install_files__(srcdir=gitdir, filelist=exefiles, dstdir=exedir)
-                script["execdir"] = str(exedir)
+                script["exedir"] = str(exedir)
         else:
             logging.error(
                 f"Can't install {script_id}: unknown installation method: {script['install']}"
@@ -316,7 +316,7 @@ class MPlug:
         if xdg_data:
             self.workdir = Path(xdg_data) / "mplug"
         elif appdata:
-            self.mpvdir = Path(appdata) / "mplug"
+            self.workdir = Path(appdata) / "mplug"
         else:
             self.workdir = Path.home() / ".mplug"
         # MPV directory usually ~/.config/mpv on Linux/Mac
@@ -373,7 +373,7 @@ class MPlug:
             filename = Path(file).name
             dst = folder / filename
             logging.info(f"Removing {dst}")
-            if not dst.is_symlink:
+            if not dst.is_symlink():
                 logging.critical(
                     "File %s is not a symlink! It apparently was not installed by %s. Aborting.",
                     dst,
