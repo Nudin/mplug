@@ -16,11 +16,13 @@
 # Copyright (C) Michael F. Schönitzer, 2020
 
 
+import itertools
 import json
 import logging
 import os
 import shutil
 import sys
+import textwrap
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
@@ -32,27 +34,29 @@ VERSION = "0.1"
 
 
 def print_help():
-    print(
-        f"""{NAME} {VERSION}
+    help_text = f"""\
+        {NAME} {VERSION}
 
-Usage: {NAME} [-v] command
+        Usage: {NAME} [-v] command
 
-Available commands:
-- install NAME|ID          Install a plugin by name or plugin-id
-- uninstall ID             Remove a plugin from the system
-- disable ID               Disable a plugin without deleting it from the system
-- search TEXT              Search for a plugin by name and description
-- update                   Update the list of available plugins
-- upgrade                  Update all plugins
-- list-installed           List all plugins installed with {NAME}
-    """
-    )
+        Available commands:
+        - install NAME|ID          Install a plugin by name or plugin-id
+        - uninstall ID             Remove a plugin from the system
+        - disable ID               Disable a plugin without deleting it from the system
+        - search TEXT              Search for a plugin by name and description
+        - update                   Update the list of available plugins
+        - upgrade                  Update all plugins
+        - list-installed           List all plugins installed with {NAME}
+        """
+    print(textwrap.dedent(help_text))
 
 
 logging.basicConfig(level="INFO", format="%(message)s")
 
 
-def ask_num(question: str, options: List[str]) -> Optional[str]:
+def ask_num(
+    question: str, options: List[str], descriptions: Optional[List[str]] = None
+) -> Optional[str]:
     """Ask to choose from a number of options.
 
     The user is given a list of numbered options and should pick one, by
@@ -60,13 +64,23 @@ def ask_num(question: str, options: List[str]) -> Optional[str]:
 
     question: The message that is shown to the user
     options: The options from which the user should pick
+    descriptions: Array of strings, same length as options. Description for the
+    options that will be printed together with the options.
     returns: the choice
     """
+    if descriptions is None:
+        descriptions = itertools.repeat(None)
+    term_width = shutil.get_terminal_size((80, 20)).columns
+    wrapper = textwrap.TextWrapper(
+        width=min(100, term_width), initial_indent="  ", subsequent_indent="  "
+    )
     print(question)
-    for i, opt in enumerate(options):
+    for i, (opt, desc) in enumerate(zip(options, descriptions)):
         print(f"[{i}] {opt}")
-    answer = input("> ")
+        if desc is not None:
+            print(wrapper.fill(desc))
     try:
+        answer = input("> ")
         num = int(answer)
         assert num >= 0
         assert num < len(options)
@@ -74,6 +88,9 @@ def ask_num(question: str, options: List[str]) -> Optional[str]:
     except ValueError:
         return None
     except AssertionError:
+        return None
+    except KeyboardInterrupt:
+        print()
         return None
 
 
@@ -223,15 +240,20 @@ class MPlug:
     def search(self, seach_string: str):
         """Search names and descriptions of scripts."""
         scripts = []
+        descriptions = []
         seach_string = seach_string.lower()
         for key, value in self.script_directory.items():
             if seach_string in value.get("name", ""):
                 scripts.append(key)
+                descriptions.append(value.get("desc", ""))
             elif seach_string in value.get("desc", "").lower():
                 scripts.append(key)
-        self.__install_from_list__(scripts)
+                descriptions.append(value.get("desc", ""))
+        self.__install_from_list__(scripts, descriptions)
 
-    def __install_from_list__(self, scripts: List[str]):
+    def __install_from_list__(
+        self, scripts: List[str], descriptions: Optional[List[str]] = None
+    ):
         """Ask the user which of the scripts should be installed."""
         logging.debug("Found %i potential scripts", len(scripts))
         if len(scripts) == 0:
@@ -243,7 +265,7 @@ class MPlug:
             else:
                 sys.exit(0)
         else:
-            choise = ask_num("Found multiple scripts:", scripts)
+            choise = ask_num("Found multiple scripts:", scripts, descriptions)
             if choise:
                 self.install(choise)
             else:
