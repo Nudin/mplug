@@ -15,6 +15,7 @@ Install and usage
 	- To disable a plugin without uninstalling it: `./mplug disable plugin_id`
 	- To search for a plugin `./mplug search term`
 	- To list all installed plugins `./mplug list-installed`
+- You can find plugins in the WebUI of the [mpv script directory](https://nudin.github.io/mpv-script-directory/)
 
 Status & Todo
 -------------
