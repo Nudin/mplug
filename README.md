@@ -22,6 +22,5 @@ Status & Todo
 - [X] First version of plugin manager
 - [X] Write a Webinterface to browse plugins
 - [ ] Add install instructions for all plugins to the [mpv script directory](https://github.com/Nudin/mpv-script-directory)
-- [ ] Add Tests and clean up code
 - [ ] Write a TUI
 - [ ] Write a GUI

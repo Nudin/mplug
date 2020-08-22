@@ -274,9 +274,23 @@ class MPlug:
     def install(self, script_id: str):
         """Install the script with the given script id."""
         script = self.script_directory[script_id].copy()
+        term_width = shutil.get_terminal_size((80, 20)).columns
+        wrapper = textwrap.TextWrapper(
+            width=min(70, term_width), initial_indent="  ", subsequent_indent="  ",
+        )
 
         if "install" not in script:
-            logging.error(f"No installation method for {script_id}")
+            errormsg = f"No installation method for {script_id}"
+            explanation = """\
+            This means, so far no one added the installation method to the mpv
+            script directory. Doing so is most likely possible with just a few
+            lines of JSON. Please add them and create a PR. You can find an
+            introduction here:
+            """
+            url = "https://github.com/Nudin/mpv-script-directory/blob/master/HOWTO_ADD_INSTALL_INSTRUCTIONS.md"
+            logging.error(errormsg)
+            logging.error(wrapper.fill(textwrap.dedent(explanation)))
+            logging.error(url)
             sys.exit(4)
         elif script["install"] == "git":
             gitdir = self.workdir / script["gitdir"]
