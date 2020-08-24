@@ -13,7 +13,7 @@ from typing import Optional
 from .mplug import MPlug
 
 NAME = "mplug"
-VERSION = "0.1"
+VERSION = "0.1.0"
 
 
 def print_help():
