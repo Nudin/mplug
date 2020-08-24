@@ -25,10 +25,10 @@ VERSION = "0.1"
 class MPlug:
     """Plugin Manager for mpv.
 
-    MPlug can install, update and uninstall scripts, shaders, or other tools to
+    MPlug can install, update and uninstall plugins, shaders, or other tools to
     enhance the video player mpv. It is based on the `mpv script directory`,
-    that ideally contains all known scripts with machine readable metadata to
-    install them. The git repository of the script directory is cloned into a
+    that ideally contains all known plugins with machine readable metadata to
+    install them. The git repository of the plugin directory is cloned into a
     subdirectory of the working directory and updated by hand (update()) or
     after 30 days.
 
@@ -66,47 +66,47 @@ class MPlug:
         self.statefile = self.workdir / "installed_plugins"
         try:
             with open(self.statefile) as f:
-                self.installed_scripts = json.load(f)
+                self.installed_plugins = json.load(f)
         except json.JSONDecodeError as e:
             logging.error("Failed to load mplug file %s: %s", self.statefile, e)
             sys.exit(11)
         except FileNotFoundError:
             logging.debug("No packages installed yet.")
-            self.installed_scripts = {}
+            self.installed_plugins = {}
 
     def save_state_to_disk(self):
         """Write installed plugins on exit."""
         with open(self.statefile, "w") as f:
-            json.dump(self.installed_scripts, f)
-            logging.debug("Saving list of installed scripts")
+            json.dump(self.installed_plugins, f)
+            logging.debug("Saving list of installed plugins")
 
     def update(self):
         """Get or update the 'mpv script directory'."""
         logging.info(f"Updating {self.directory_filename}")
         self.__clone_git__(self.directory_remoteurl, self.directory_folder)
 
-    def uninstall(self, script_id: str, remove: bool = True):
-        """Remove or disable a script.
+    def uninstall(self, plugin_id: str, remove: bool = True):
+        """Remove or disable a plugin.
 
         remove: if True the tools folder will be deleted from disc. If False
         only remove the symlinks to the files.
         """
-        if script_id not in self.installed_scripts:
+        if plugin_id not in self.installed_plugins:
             logging.error("Not installed")
             sys.exit(10)
-        script = self.installed_scripts[script_id]
-        if "install" not in script:
-            logging.error(f"No installation method for {script_id}")
+        plugin = self.installed_plugins[plugin_id]
+        if "install" not in plugin:
+            logging.error(f"No installation method for {plugin_id}")
             sys.exit(4)
-        elif script["install"] == "git":
-            logging.debug("Remove links of {script_id}")
-            gitdir = self.workdir / script["gitdir"]
-            scriptfiles = script.get("scriptfiles", [])
-            shaderfiles = script.get("shaderfiles", [])
-            fontfiles = script.get("fontfiles", [])
-            scriptoptfiles = script.get("scriptoptfiles", [])
-            exefiles = script.get("exefiles", [])
-            exedir = script.get("exedir")
+        elif plugin["install"] == "git":
+            logging.debug("Remove links of {plugin_id}")
+            gitdir = self.workdir / plugin["gitdir"]
+            scriptfiles = plugin.get("scriptfiles", [])
+            shaderfiles = plugin.get("shaderfiles", [])
+            fontfiles = plugin.get("fontfiles", [])
+            scriptoptfiles = plugin.get("scriptoptfiles", [])
+            exefiles = plugin.get("exefiles", [])
+            exedir = plugin.get("exedir")
             self.__uninstall_files__(scriptfiles, self.scriptdir)
             self.__uninstall_files__(scriptoptfiles, self.scriptoptsdir)
             self.__uninstall_files__(fontfiles, self.fontsdir)
@@ -124,69 +124,69 @@ class MPlug:
                 shutil.rmtree(gitdir)
         else:
             logging.error(
-                f"Can't install {script_id}: unknown installation method: {script['install']}"
+                f"Can't install {plugin_id}: unknown installation method: {plugin['install']}"
             )
             sys.exit(5)
-        del self.installed_scripts[script_id]
+        del self.installed_plugins[plugin_id]
 
-    def install_by_name(self, scriptname: str):
-        """Install a script with the given name or id.
+    def install_by_name(self, pluginname: str):
+        """Install a plugin with the given name or id.
 
-        If there are multiple scripts with the same name the user is asked to
+        If there are multiple plugins with the same name the user is asked to
         choose."""
-        if scriptname in self.script_directory:
-            return self.install(scriptname)
+        if pluginname in self.script_directory:
+            return self.install(pluginname)
         else:
-            scripts = []
+            plugins = []
             for key, value in self.script_directory.items():
-                if value["name"] == scriptname:
-                    scripts.append(key)
-            return self.__install_from_list__(scripts)
+                if value["name"] == pluginname:
+                    plugins.append(key)
+            return self.__install_from_list__(plugins)
 
     def search(self, seach_string: str):
-        """Search names and descriptions of scripts."""
-        scripts = []
+        """Search names and descriptions of plugins."""
+        plugins = []
         descriptions = []
         seach_string = seach_string.lower()
         for key, value in self.script_directory.items():
             if seach_string in value.get("name", ""):
-                scripts.append(key)
+                plugins.append(key)
                 descriptions.append(value.get("desc", ""))
             elif seach_string in value.get("desc", "").lower():
-                scripts.append(key)
+                plugins.append(key)
                 descriptions.append(value.get("desc", ""))
-        self.__install_from_list__(scripts, descriptions)
+        self.__install_from_list__(plugins, descriptions)
 
     def __install_from_list__(
-        self, scripts: List[str], descriptions: Optional[List[str]] = None
+        self, plugins: List[str], descriptions: Optional[List[str]] = None
     ):
-        """Ask the user which of the scripts should be installed."""
-        logging.debug("Found %i potential scripts", len(scripts))
-        if len(scripts) == 0:
-            logging.error("No matching scripts found.")
+        """Ask the user which of the plugins should be installed."""
+        logging.debug("Found %i potential plugins", len(plugins))
+        if len(plugins) == 0:
+            logging.error("No matching plugins found.")
             sys.exit(3)
-        elif len(scripts) == 1:
-            if ask_yes_no(f"Install {scripts[0]}?"):
-                self.install(scripts[0])
+        elif len(plugins) == 1:
+            if ask_yes_no(f"Install {plugins[0]}?"):
+                self.install(plugins[0])
             else:
                 sys.exit(0)
         else:
-            choise = ask_num("Found multiple scripts:", scripts, descriptions)
+            choise = ask_num("Found multiple plugins:", plugins, descriptions)
             if choise:
                 self.install(choise)
             else:
                 sys.exit(0)
 
-    def install(self, script_id: str):
-        """Install the script with the given script id."""
-        script = self.script_directory[script_id].copy()
+    def install(self, plugin_id: str):
+        """Install the plugin with the given plugin id."""
+        plugin = self.script_directory[plugin_id].copy()
         term_width = shutil.get_terminal_size((80, 20)).columns
         wrapper = textwrap.TextWrapper(
             width=min(70, term_width), initial_indent="  ", subsequent_indent="  ",
         )
 
-        if "install" not in script:
-            errormsg = f"No installation method for {script_id}"
+        if "install" not in plugin:
+            errormsg = f"No installation method for {plugin_id}"
             explanation = """\
             This means, so far no one added the installation method to the mpv
             script directory. Doing so is most likely possible with just a few
@@ -198,14 +198,14 @@ class MPlug:
             logging.error(wrapper.fill(textwrap.dedent(explanation)))
             logging.error(url)
             sys.exit(4)
-        elif script["install"] == "git":
-            gitdir = self.workdir / script["gitdir"]
-            repourl = script["git"]
-            scriptfiles = script.get("scriptfiles", [])
-            shaderfiles = script.get("shaderfiles", [])
-            fontfiles = script.get("fontfiles", [])
-            scriptoptfiles = script.get("scriptoptfiles", [])
-            exefiles = script.get("exefiles", [])
+        elif plugin["install"] == "git":
+            gitdir = self.workdir / plugin["gitdir"]
+            repourl = plugin["git"]
+            scriptfiles = plugin.get("scriptfiles", [])
+            shaderfiles = plugin.get("shaderfiles", [])
+            fontfiles = plugin.get("fontfiles", [])
+            scriptoptfiles = plugin.get("scriptoptfiles", [])
+            exefiles = plugin.get("exefiles", [])
             logging.debug("Clone git repo %s to %s", repourl, gitdir)
             self.__clone_git__(repourl, gitdir)
             self.__install_files__(
@@ -224,16 +224,16 @@ class MPlug:
                 exedir = ask_path("Where to put executable files?", Path("~/bin"))
                 logging.info("Placing executables in %s", str(exedir))
                 self.__install_files__(srcdir=gitdir, filelist=exefiles, dstdir=exedir)
-                script["exedir"] = str(exedir)
+                plugin["exedir"] = str(exedir)
         else:
             logging.error(
-                f"Can't install {script_id}: unknown installation method: {script['install']}"
+                f"Can't install {plugin_id}: unknown installation method: {plugin['install']}"
             )
             sys.exit(5)
-        if "install-notes" in script:
-            print(" " + script["install-notes"].replace("\n", "\n "))
-        script["install_date"] = datetime.now().isoformat()
-        self.installed_scripts[script_id] = script
+        if "install-notes" in plugin:
+            print(" " + plugin["install-notes"].replace("\n", "\n "))
+        plugin["install_date"] = datetime.now().isoformat()
+        self.installed_plugins[plugin_id] = plugin
 
     def upgrade(self):
         """Upgrade all repositories in the working directory."""
@@ -243,9 +243,9 @@ class MPlug:
             repo.remote().pull()
 
     def list_installed(self):
-        """List all installed scripts"""
-        logging.debug("%i installed scripts", len(self.installed_scripts))
-        print("\n".join(self.installed_scripts.keys()))
+        """List all installed plugins"""
+        logging.debug("%i installed plugins", len(self.installed_plugins))
+        print("\n".join(self.installed_plugins.keys()))
 
     def __get_dirs__(self):
         """Find the directory paths by using environment variables or
@@ -254,7 +254,7 @@ class MPlug:
         xdg_conf = os.getenv("XDG_CONFIG_HOME")
         appdata = os.getenv("APPDATA")
         mpv_home = os.getenv("MPV_HOME")
-        # Directory for MPlug this is where all script files will be stored
+        # Directory for MPlug this is where all plugin files will be stored
         if xdg_data:
             self.workdir = Path(xdg_data) / "mplug"
         elif appdata:
@@ -294,7 +294,7 @@ class MPlug:
 
     @staticmethod
     def __install_files__(srcdir: Path, filelist: List[str], dstdir: Path):
-        """Install all scriptfiles as symlinks into the corresponding folder."""
+        """Install selected files as symlinks into the corresponding folder."""
         if not dstdir.exists():
             logging.debug("Create directory %s", dstdir)
             os.makedirs(dstdir)

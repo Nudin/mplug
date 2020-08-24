@@ -75,7 +75,7 @@ def fixture_init_mplug(mock_files):
     mpl = mplug.MPlug()
     status_file = mpl.statefile
     assert mpl.script_directory == {}
-    assert mpl.installed_scripts == {}
+    assert mpl.installed_plugins == {}
     yield mpl
     mock_files.open.reset_mock()
     mpl.save_state_to_disk()
@@ -92,7 +92,7 @@ def test_mplug_init_up2date(mock_files):
     script_dir_file = mpl.directory_folder / mpl.directory_filename
     status_file = mpl.statefile
     assert mpl.script_directory == {}
-    assert mpl.installed_scripts == {}
+    assert mpl.installed_plugins == {}
     mock_files.json_load.assert_called()
     mock_files.open.assert_has_calls(
         [call(script_dir_file), call(status_file)], any_order=True
@@ -109,7 +109,7 @@ def test_mplug_init_outdated(mock_files):
     script_dir_file = mpl.directory_folder / mpl.directory_filename
     status_file = mpl.statefile
     assert mpl.script_directory == {}
-    assert mpl.installed_scripts == {}
+    assert mpl.installed_plugins == {}
     mock_files.json_load.assert_called()
     mock_files.open.assert_has_calls(
         [call(script_dir_file), call(status_file)], any_order=True
@@ -126,7 +126,7 @@ def test_mplug_init_new(mock_files):
     script_dir_file = mpl.directory_folder / mpl.directory_filename
     status_file = mpl.statefile
     assert mpl.script_directory == {}
-    assert mpl.installed_scripts == {}
+    assert mpl.installed_plugins == {}
     mock_files.json_load.assert_called()
     mock_files.open.assert_has_calls(
         [call(script_dir_file), call(status_file)], any_order=True
@@ -137,7 +137,7 @@ def test_mplug_init_no_state_file(mock_files):
     """Test initialisation when the state-file is missing."""
     mock_files.json_load.side_effect = [None, FileNotFoundError]
     mpl = mplug.MPlug()
-    assert mpl.installed_scripts == {}
+    assert mpl.installed_plugins == {}
 
 
 def test_mplug_init_invalid_state(mock_files):
@@ -332,10 +332,10 @@ def test_mplug_install_by_id_unknown_method(mpl):
 def test_mplug_install_by_id_git(mpl, mock_files):
     """Successfully install a plugin by it's id via git."""
     mock_files.Path_exists.return_value = False
-    script_id = "script_id"
+    plugin_id = "plugin_id"
     repo_url = " git_url"
-    mpl.script_directory[script_id] = {
-        "name": script_id,
+    mpl.script_directory[plugin_id] = {
+        "name": plugin_id,
         "install": "git",
         "git": repo_url,
         "gitdir": "gitdir",
@@ -343,12 +343,12 @@ def test_mplug_install_by_id_git(mpl, mock_files):
         "install-notes": "Message to be shown after the install.",
     }
     gitdir = mpl.workdir / "gitdir"
-    mpl.install_by_name(script_id)
+    mpl.install_by_name(plugin_id)
     mock_files.Repo_clone_from.assert_called_with(
         repo_url, gitdir, multi_options=["--depth 1"]
     )
     mock_files.os_symlink.assert_called_once()
-    assert mpl.installed_scripts != {}
+    assert mpl.installed_plugins != {}
 
 
 @pytest.fixture()
@@ -358,10 +358,10 @@ def fixture_installed_plugin(mpl, mock_files):
     This fixture is used to test uninstallments, it is basically identical to
     test_mplug_install_by_id_git."""
     mock_files.Path_exists.return_value = False
-    script_id = "script_id"
+    plugin_id = "plugin_id"
     repo_url = " git_url"
-    mpl.script_directory[script_id] = {
-        "name": script_id,
+    mpl.script_directory[plugin_id] = {
+        "name": plugin_id,
         "install": "git",
         "git": repo_url,
         "gitdir": "gitdir",
@@ -369,12 +369,12 @@ def fixture_installed_plugin(mpl, mock_files):
         "install-notes": "Message to be shown after the install.",
     }
     gitdir = mpl.workdir / "gitdir"
-    mpl.install_by_name(script_id)
+    mpl.install_by_name(plugin_id)
     mock_files.Repo_clone_from.assert_called_with(
         repo_url, gitdir, multi_options=["--depth 1"]
     )
     mock_files.os_symlink.assert_called_once()
-    assert mpl.installed_scripts != {}
+    assert mpl.installed_plugins != {}
     return mpl
 
 
@@ -395,7 +395,7 @@ def test_mplug_install_by_id_git_filepresent(mpl, mock_files, mocker):
     mpl.install_by_name(searchterm)
     mock_repo_clone.assert_called()
     mock_files.os_symlink.assert_not_called()
-    assert len(mpl.installed_scripts) == 1
+    assert len(mpl.installed_plugins) == 1
 
 
 def test_mplug_install_by_id_git_repopresent(mpl, mock_files):
@@ -416,7 +416,7 @@ def test_mplug_install_by_id_git_repopresent(mpl, mock_files):
     mock_files.Repo_remote.assert_called_with()
     mock_files.Repo_remote().pull.assert_called_with()
     mock_files.os_symlink.assert_not_called()
-    assert len(mpl.installed_scripts) == 1
+    assert len(mpl.installed_plugins) == 1
 
 
 def test_mplug_install_by_id_git_withexe(mpl, mocker, mock_files):
@@ -424,37 +424,37 @@ def test_mplug_install_by_id_git_withexe(mpl, mocker, mock_files):
     mock_files.Path_exists.return_value = False
     exedir = "path_of_executables"
     mocker.patch("mplug.mplug.ask_path", return_value=Path(exedir))
-    script_id = "script_id"
+    plugin_id = "plugin_id"
     repo_url = " git_url"
     filename = "executable_file"
-    mpl.script_directory[script_id] = {
-        "name": script_id,
+    mpl.script_directory[plugin_id] = {
+        "name": plugin_id,
         "install": "git",
         "git": repo_url,
         "gitdir": "gitdir",
         "exefiles": [filename],
     }
-    script_dir = mpl.workdir / "gitdir"
-    src_file = script_dir / filename
+    plugin_dir = mpl.workdir / "gitdir"
+    src_file = plugin_dir / filename
     dst_file = Path(exedir) / filename
-    mpl.install_by_name(script_id)
+    mpl.install_by_name(plugin_id)
     mock_files.Repo_clone_from.assert_called_with(
-        repo_url, script_dir, multi_options=["--depth 1"]
+        repo_url, plugin_dir, multi_options=["--depth 1"]
     )
     mock_files.os_symlink.assert_called_once_with(src_file, dst_file)
-    assert mpl.installed_scripts != {}
-    assert mpl.installed_scripts[script_id]["exedir"] == exedir
-    mpl.uninstall(script_id)
-    mock_files.shutil_rmtree.assert_called_once_with(script_dir)
+    assert mpl.installed_plugins != {}
+    assert mpl.installed_plugins[plugin_id]["exedir"] == exedir
+    mpl.uninstall(plugin_id)
+    mock_files.shutil_rmtree.assert_called_once_with(plugin_dir)
     mock_files.os_remove.assert_called_once_with(dst_file)
-    assert mpl.installed_scripts == {}
+    assert mpl.installed_plugins == {}
 
 
 def test_mplug_upgrade(mpl, mock_files):
     """Upgrade multiple plugins."""
-    script_list = ["foo", "bar"]
-    call_list = [call(s) for s in script_list]
-    mock_files.Path_glob.return_value = script_list
+    plugin_list = ["foo", "bar"]
+    call_list = [call(s) for s in plugin_list]
+    mock_files.Path_glob.return_value = plugin_list
     mpl.upgrade()
     mock_files.Repo_init.assert_has_calls(call_list)
     mock_files.Repo_remote.assert_called_with()
@@ -469,14 +469,14 @@ def test_mplug_list_installed(mpl):
 def test_mplug_uninstall(fixture_installed_plugin, mock_files):
     """Uninstall a previously installed plugin."""
     mpl = fixture_installed_plugin
-    script_id = "script_id"
-    script = mpl.installed_scripts[script_id]
-    file_calls = [call(mpl.scriptdir / file) for file in script["scriptfiles"]]
-    script_dir = mpl.workdir / script["gitdir"]
-    mpl.uninstall(script_id)
-    mock_files.shutil_rmtree.assert_called_with(script_dir)
+    plugin_id = "plugin_id"
+    plugin = mpl.installed_plugins[plugin_id]
+    file_calls = [call(mpl.scriptdir / file) for file in plugin["scriptfiles"]]
+    plugin_dir = mpl.workdir / plugin["gitdir"]
+    mpl.uninstall(plugin_id)
+    mock_files.shutil_rmtree.assert_called_with(plugin_dir)
     mock_files.os_remove.assert_has_calls(file_calls)
-    assert mpl.installed_scripts == {}
+    assert mpl.installed_plugins == {}
 
 
 def test_mplug_uninstall_by_id_no_method(mpl):
@@ -502,24 +502,24 @@ def test_mplug_uninstall_by_id_unknown_method(mpl):
 def test_mplug_uninstall_missing(fixture_installed_plugin):
     """Try to uninstall a plugin that is not installed."""
     mpl = fixture_installed_plugin
-    prev_installed_scripts = mpl.installed_scripts.copy()
-    script_id = "not_existent_script_id"
+    prev_installed_plugins = mpl.installed_plugins.copy()
+    plugin_id = "not_existent_plugin_id"
     with pytest.raises(SystemExit) as pytest_wrapped_e:
-        mpl.uninstall(script_id)
+        mpl.uninstall(plugin_id)
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code != 0
-    assert mpl.installed_scripts == prev_installed_scripts
+    assert mpl.installed_plugins == prev_installed_plugins
 
 
 def test_mplug_uninstall_wrong_file(fixture_installed_plugin, mock_files):
     """Try to uninstall a plugin that has a file that is not a symlink, meaning
     not (correctly) created by MPlug."""
     mpl = fixture_installed_plugin
-    prev_installed_scripts = mpl.installed_scripts.copy()
+    prev_installed_plugins = mpl.installed_plugins.copy()
     mock_files.Path_is_symlink.return_value = False
-    script_id = "script_id"
+    plugin_id = "plugin_id"
     with pytest.raises(SystemExit) as pytest_wrapped_e:
-        mpl.uninstall(script_id)
+        mpl.uninstall(plugin_id)
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code != 0
-    assert mpl.installed_scripts == prev_installed_scripts
+    assert mpl.installed_plugins == prev_installed_plugins

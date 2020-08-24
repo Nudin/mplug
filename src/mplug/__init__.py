@@ -38,7 +38,7 @@ logging.basicConfig(level="INFO", format="%(message)s")
 
 
 def main(operation: str, name: Optional[str] = None):
-    # Load script directory
+    # Initialize mplug and load script directory
     plug = MPlug()
 
     if operation == "install":
@@ -60,6 +60,7 @@ def main(operation: str, name: Optional[str] = None):
 
 
 def arg_parse(argv):
+    """Parse the command line arguments."""
     if len(argv) > 1 and argv[1] == "-v":
         logging.getLogger().setLevel("DEBUG")
         del argv[1]
