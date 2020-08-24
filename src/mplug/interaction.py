@@ -49,6 +49,9 @@ def ask_num(
     except KeyboardInterrupt:
         print()
         return None
+    except EOFError:
+        print()
+        return None
 
 
 def ask_yes_no(question: str) -> bool:
