@@ -10,54 +10,6 @@ import mplug
 import pytest
 
 
-def test_print_help():
-    mplug.print_help()
-
-
-def test_ask_num_valid(mocker):
-    """The user chooses one of the given options"""
-    choices = ["foo", "bar", "baz"]
-    for n, choice in enumerate(choices):
-        mocker.patch("mplug.input", return_value=str(n))
-        assert mplug.ask_num("Q?", choices) == choice
-
-
-def test_ask_num_invalid(mocker):
-    """The user enters an invalid input"""
-    choices = ["foo", "bar", "baz"]
-    invalid_strings = ["x", str(len(choices)), ""]
-    for invalid in invalid_strings:
-        mocker.patch("mplug.input", return_value=invalid)
-        assert mplug.ask_num("Q?", choices) is None
-
-
-def test_ask_yes_no_yes(mocker):
-    """The user answers yes"""
-    answers = ["y", "Y"]
-    for input_str in answers:
-        mocker.patch("mplug.input", return_value=input_str)
-        assert mplug.ask_yes_no("Q?")
-
-
-def test_ask_yes_no_no(mocker):
-    """The user answers no or an invalid input"""
-    answers = ["n", "N", "", "invalid_input"]
-    for input_str in answers:
-        mocker.patch("mplug.input", return_value=input_str)
-        assert not mplug.ask_yes_no("Q?")
-
-
-def test_ask_path(mocker):
-    """The user enters a directory path"""
-    mocker.patch("mplug.input", return_value="")
-    default = Path("~/foo")
-    assert mplug.ask_path("Q?", default) == default.expanduser()
-    mocker.patch("mplug.input", return_value="~/bar")
-    assert mplug.ask_path("Q?", default) == (Path.home() / "bar").expanduser()
-    mocker.patch("mplug.input", return_value="/bar")
-    assert mplug.ask_path("Q?", default) == (Path("/bar"))
-
-
 @pytest.fixture(name="mock_files")
 def fixture_mock_files(mocker):
     """Mock all used functions that do disc IO.
@@ -89,21 +41,22 @@ def fixture_mock_files(mocker):
     )
     current_timestamp = datetime.now().timestamp()
     return IO_Mocks(
-        mocker.patch("mplug.open", mocker.mock_open()),
+        mocker.patch("mplug.mplug.open", mocker.mock_open()),
         mocker.patch("json.load", return_value={}),
         mocker.patch("json.dump", return_value=None),
         mocker.patch("os.makedirs", return_value=None),
         mocker.patch("os.symlink", return_value=None),
         mocker.patch("os.remove", return_value=None),
         mocker.patch("shutil.rmtree", return_value=None),
-        mocker.patch("mplug.Repo.clone_from", return_value=None),
-        mocker.patch("mplug.Repo.__init__", return_value=None),
-        mocker.patch("mplug.Repo.remote", return_value=mocker.Mock()),
-        mocker.patch("mplug.Path.exists", return_value=True),
-        mocker.patch("mplug.Path.glob", return_value=[]),
-        mocker.patch("mplug.Path.is_symlink", return_value=True),
+        mocker.patch("mplug.mplug.Repo.clone_from", return_value=None),
+        mocker.patch("mplug.mplug.Repo.__init__", return_value=None),
+        mocker.patch("mplug.mplug.Repo.remote", return_value=mocker.Mock()),
+        mocker.patch("mplug.mplug.Path.exists", return_value=True),
+        mocker.patch("mplug.mplug.Path.glob", return_value=[]),
+        mocker.patch("mplug.mplug.Path.is_symlink", return_value=True),
         mocker.patch(
-            "mplug.Path.stat", return_value=mocker.Mock(st_mtime=current_timestamp)
+            "mplug.mplug.Path.stat",
+            return_value=mocker.Mock(st_mtime=current_timestamp),
         ),
     )
 
@@ -273,7 +226,7 @@ def test_mplug_install_by_name_onematch_decline(mpl, mocker):
     """Try to install a plugin, but then cancel the installation."""
     searchterm = "searchterm"
     mpl.script_directory["uniq-id"] = {"name": searchterm}
-    mock_yes_no = mocker.patch("mplug.ask_yes_no", return_value=False)
+    mock_yes_no = mocker.patch("mplug.mplug.ask_yes_no", return_value=False)
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         mpl.install_by_name(searchterm)
     assert pytest_wrapped_e.type == SystemExit
@@ -288,7 +241,7 @@ def test_mplug_search_onematch_decline(mpl, mocker):
         "name": "name",
         "desc": f"something {searchterm} something",
     }
-    mock_yes_no = mocker.patch("mplug.ask_yes_no", return_value=False)
+    mock_yes_no = mocker.patch("mplug.mplug.ask_yes_no", return_value=False)
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         mpl.search(searchterm)
     assert pytest_wrapped_e.type == SystemExit
@@ -303,7 +256,7 @@ def test_mplug_search_onematche_choose(mpl, mocker):
         "name": "name",
         "desc": f"something {searchterm} something",
     }
-    mock_input = mocker.patch("mplug.ask_yes_no", return_value=True)
+    mock_input = mocker.patch("mplug.mplug.ask_yes_no", return_value=True)
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         mpl.search(searchterm)
     assert pytest_wrapped_e.type == SystemExit
@@ -323,7 +276,7 @@ def test_mplug_search_multiplematches_decline(mpl, mocker):
         "name": f"something {searchterm} something",
         "desc": "description",
     }
-    mock_ask_num = mocker.patch("mplug.ask_num", return_value=None)
+    mock_ask_num = mocker.patch("mplug.mplug.ask_num", return_value=None)
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         mpl.search(searchterm)
     assert pytest_wrapped_e.type == SystemExit
@@ -342,7 +295,7 @@ def test_mplug_search_multiplematches_choose(mpl, mocker):
         "name": f"something {searchterm} something",
         "desc": "description",
     }
-    mock_input = mocker.patch("mplug.input", return_value="1")
+    mock_input = mocker.patch("mplug.interaction.input", return_value="1")
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         mpl.search(searchterm)
     assert pytest_wrapped_e.type == SystemExit
@@ -464,7 +417,7 @@ def test_mplug_install_by_id_git_withexe(mpl, mocker, mock_files):
     """Successfully install and uninstall a plugin containing an executable."""
     mock_files.Path_exists.return_value = False
     exedir = "path_of_executables"
-    mocker.patch("mplug.ask_path", return_value=Path(exedir))
+    mocker.patch("mplug.mplug.ask_path", return_value=Path(exedir))
     script_id = "script_id"
     repo_url = " git_url"
     filename = "executable_file"
@@ -564,90 +517,3 @@ def test_mplug_uninstall_wrong_file(fixture_installed_plugin, mock_files):
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code != 0
     assert mpl.installed_scripts == prev_installed_scripts
-
-
-def test_arg_parse_help():
-    """Print help and exit."""
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        mplug.arg_parse(["mplug", "help"])
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == 0
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        mplug.arg_parse(["mplug"])
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == 0
-
-
-def test_arg_parse_valid():
-    """Parse all valid input combinations."""
-    op_term = ["install", "uninstall", "search", "disable"]
-    op_no_term = ["upgrade", "update", "list-installed"]
-    verbosity = [None, "-v"]
-    searchterm = "searchterm"
-    for flag in verbosity:
-        argv = ["mplug"]
-        if flag:
-            argv.append(flag)
-        for op in op_no_term:
-            result = mplug.arg_parse([*argv, op])
-            assert isinstance(result, tuple)
-            assert len(result) == 2
-            assert result[1] is None
-        for op in op_term:
-            result = mplug.arg_parse([*argv, op, searchterm])
-            assert isinstance(result, tuple)
-            assert len(result) == 2
-            assert result[1] == searchterm
-
-
-def test_arg_parse_invalid_op(mock_files):
-    """Unknown operation: Print help and exit."""
-    invalid_operations = ["invalid", "", None]
-    for operation in invalid_operations:
-        with pytest.raises(SystemExit) as pytest_wrapped_e:
-            mplug.arg_parse(["mplug", operation])
-        assert pytest_wrapped_e.type == SystemExit
-        assert pytest_wrapped_e.value.code != 0
-
-
-def test_arg_parse_missing_name(mock_files):
-    """Missing searchterm: Print help and exit."""
-    operations = ["install", "uninstall", "search", "disable"]
-    for operation in operations:
-        with pytest.raises(SystemExit) as pytest_wrapped_e:
-            mplug.arg_parse(["mplug", operation])
-        assert pytest_wrapped_e.type == SystemExit
-        assert pytest_wrapped_e.value.code != 0
-
-
-def test_main(mock_files, mocker):
-    """Call all operations and make sure that only the right function is
-    called."""
-    mock_save_state = mocker.patch("mplug.MPlug.save_state_to_disk")
-    mock_install_by_name = mocker.patch("mplug.MPlug.install_by_name")
-    mock_search = mocker.patch("mplug.MPlug.search")
-    mock_uninstall = mocker.patch("mplug.MPlug.uninstall")
-    mock_list_installed = mocker.patch("mplug.MPlug.list_installed")
-    mock_update = mocker.patch("mplug.MPlug.update")
-    mock_upgrade = mocker.patch("mplug.MPlug.upgrade")
-    argmap = {
-        "install": mock_install_by_name,
-        "search": mock_search,
-        "uninstall": mock_uninstall,
-        "disable": mock_uninstall,
-        "update": mock_update,
-        "upgrade": mock_upgrade,
-        "list-installed": mock_list_installed,
-    }
-    ops_mock_list = set(argmap.values())
-    for arg, mock in argmap.items():
-        mplug.main(arg, "searchterm")
-
-        for mock_op in ops_mock_list:
-            if mock_op is not mock:
-                mock_op.assert_not_called()
-            else:
-                mock.assert_called_once()
-            mock_op.reset_mock()
-        mock_save_state.assert_called_once_with()
-        mock_save_state.reset_mock()
