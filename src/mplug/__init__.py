@@ -477,5 +477,9 @@ def arg_parse(argv):
     return operation, name
 
 
-if __name__ == "__main__":
+def run():
     main(*arg_parse(sys.argv))
+
+
+if __name__ == "__main__":
+    run()

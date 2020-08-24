@@ -6,9 +6,8 @@ from datetime import datetime
 from pathlib import Path
 from unittest.mock import call
 
-import pytest
-
 import mplug
+import pytest
 
 
 def test_print_help():
