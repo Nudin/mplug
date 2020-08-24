@@ -237,8 +237,11 @@ class MPlug:
 
     def upgrade(self):
         """Upgrade all repositories in the working directory."""
-        for gitdir in self.workdir.glob("*/*"):
-            logging.info("Updating repo in %s", gitdir)
+        self.update()
+        for plugin in self.installed_plugins.values():
+            gitdir = self.workdir / plugin["gitdir"]
+            logging.info("Updating plugin %s", plugin["name"])
+            logging.debug("Updating repo in %s", gitdir)
             repo = Repo(gitdir)
             repo.remote().pull()
 

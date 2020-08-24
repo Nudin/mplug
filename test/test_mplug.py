@@ -452,9 +452,14 @@ def test_mplug_install_by_id_git_withexe(mpl, mocker, mock_files):
 
 def test_mplug_upgrade(mpl, mock_files):
     """Upgrade multiple plugins."""
-    plugin_list = ["foo", "bar"]
-    call_list = [call(s) for s in plugin_list]
-    mock_files.Path_glob.return_value = plugin_list
+    mpl.installed_plugins = {
+        "foo": {"name": "foo", "gitdir": "foodir"},
+        "bar": {"name": "bar", "gitdir": "bardir"},
+    }
+    call_list = [
+        call(mpl.workdir / plugin["gitdir"])
+        for plugin in mpl.installed_plugins.values()
+    ]
     mpl.upgrade()
     mock_files.Repo_init.assert_has_calls(call_list)
     mock_files.Repo_remote.assert_called_with()
