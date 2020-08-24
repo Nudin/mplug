@@ -4,6 +4,10 @@ version = "0.1.0"
 description = "A plugin manager for mpv"
 authors = ["Michael F. Schönitzer <michael@schoenitzer.de>"]
 license = "MPL-2.0"
+readme = "README.md"
+homepage = "https://github.com/nudin/mplug"
+repository = "https://github.com/nudin/mplug"
+keywords = ["mpv"]
 
 [tool.poetry.dependencies]
 python = "^3.6"
