@@ -37,9 +37,9 @@ def print_help():
 logging.basicConfig(level="INFO", format="%(message)s")
 
 
-def main(operation: str, name: Optional[str] = None):
+def main(operation: str, name: Optional[str] = None, verbose: bool = False):
     # Initialize mplug and load script directory
-    plug = MPlug()
+    plug = MPlug(verbose)
 
     if operation == "install":
         plug.install_by_name(name)
@@ -62,8 +62,11 @@ def main(operation: str, name: Optional[str] = None):
 def arg_parse(argv):
     """Parse the command line arguments."""
     if len(argv) > 1 and argv[1] == "-v":
+        verbose = True
         logging.getLogger().setLevel("DEBUG")
         del argv[1]
+    else:
+        verbose = False
     if len(argv) < 2:
         print_help()
         sys.exit(0)
@@ -93,7 +96,7 @@ def arg_parse(argv):
             name = argv[2]
     else:
         name = None
-    return operation, name
+    return operation, name, verbose
 
 
 def run():

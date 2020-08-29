@@ -43,12 +43,13 @@ class MPlug:
     directory_filename = "mpv_script_directory.json"
     directory_remoteurl = "https://github.com/Nudin/mpv-script-directory.git"
 
-    def __init__(self):
+    def __init__(self, verbose=False):
         """Initialise Plugin Manager.
 
         Clone the script directory if not already available, update it if it
         hasn't been updated since more then 30 days. Then read the directory.
         """
+        self.verbose = verbose
         self.__get_dirs__()
         if not self.workdir.exists():
             logging.debug("Create workdir %s", self.workdir)
@@ -248,7 +249,10 @@ class MPlug:
     def list_installed(self):
         """List all installed plugins"""
         logging.debug("%i installed plugins", len(self.installed_plugins))
-        print("\n".join(self.installed_plugins.keys()))
+        for plugin_id, plugin in self.installed_plugins.items():
+            print(plugin_id)
+            if self.verbose:
+                print(plugin["desc"])
 
     def __get_dirs__(self):
         """Find the directory paths by using environment variables or
