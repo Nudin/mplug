@@ -9,7 +9,6 @@ import logging
 import os
 import shutil
 import sys
-import textwrap
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
@@ -17,6 +16,7 @@ from typing import List, Optional
 from git import Repo
 
 from .interaction import ask_num, ask_path, ask_yes_no
+from .util import wrap
 
 NAME = "mplug"
 VERSION = "0.1"
@@ -181,10 +181,6 @@ class MPlug:
     def install(self, plugin_id: str):
         """Install the plugin with the given plugin id."""
         plugin = self.script_directory[plugin_id].copy()
-        term_width = shutil.get_terminal_size((80, 20)).columns
-        wrapper = textwrap.TextWrapper(
-            width=min(70, term_width), initial_indent="  ", subsequent_indent="  ",
-        )
 
         if "install" not in plugin:
             errormsg = f"No installation method for {plugin_id}"
@@ -196,7 +192,7 @@ class MPlug:
             """
             url = "https://github.com/Nudin/mpv-script-directory/blob/master/HOWTO_ADD_INSTALL_INSTRUCTIONS.md"
             logging.error(errormsg)
-            logging.error(wrapper.fill(textwrap.dedent(explanation)))
+            logging.error(wrap(explanation, indent=1, dedent=True))
             logging.error(url)
             sys.exit(4)
         elif plugin["install"] == "git":
@@ -232,7 +228,7 @@ class MPlug:
             )
             sys.exit(5)
         if "install-notes" in plugin:
-            print(" " + plugin["install-notes"].replace("\n", "\n "))
+            print(wrap(plugin["install-notes"]))
         plugin["install_date"] = datetime.now().isoformat()
         self.installed_plugins[plugin_id] = plugin
 
@@ -250,9 +246,9 @@ class MPlug:
         """List all installed plugins"""
         logging.debug("%i installed plugins", len(self.installed_plugins))
         for plugin_id, plugin in self.installed_plugins.items():
-            print(plugin_id)
+            print(wrap(plugin_id, indent=int(self.verbose)))
             if self.verbose:
-                print(plugin["desc"])
+                print(wrap(plugin["desc"], indent=2))
 
     def __get_dirs__(self):
         """Find the directory paths by using environment variables or

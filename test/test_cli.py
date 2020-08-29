@@ -37,12 +37,12 @@ def test_arg_parse_valid():
         for op in op_no_term:
             result = mplug.arg_parse([*argv, op])
             assert isinstance(result, tuple)
-            assert len(result) == 2
+            assert len(result) == 3
             assert result[1] is None
         for op in op_term:
             result = mplug.arg_parse([*argv, op, searchterm])
             assert isinstance(result, tuple)
-            assert len(result) == 2
+            assert len(result) == 3
             assert result[1] == searchterm
 
 

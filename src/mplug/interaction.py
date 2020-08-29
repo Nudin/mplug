@@ -10,6 +10,8 @@ import textwrap
 from pathlib import Path
 from typing import List, Optional
 
+from .util import wrap
+
 
 def ask_num(
     question: str, options: List[str], descriptions: Optional[List[str]] = None
@@ -27,15 +29,11 @@ def ask_num(
     """
     if descriptions is None:
         descriptions = itertools.repeat(None)
-    term_width = shutil.get_terminal_size((80, 20)).columns
-    wrapper = textwrap.TextWrapper(
-        width=min(100, term_width), initial_indent="  ", subsequent_indent="  "
-    )
-    print(question)
+    print(wrap(question))
     for i, (opt, desc) in enumerate(zip(options, descriptions)):
         print(f"[{i}] {opt}")
         if desc is not None:
-            print(wrapper.fill(desc))
+            print(wrap(desc, indent=1))
     try:
         answer = input("> ")
         num = int(answer)
