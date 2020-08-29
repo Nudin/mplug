@@ -68,8 +68,10 @@ class MPlug:
         try:
             with open(self.statefile) as f:
                 self.installed_plugins = json.load(f)
-        except json.JSONDecodeError as e:
-            logging.error("Failed to load mplug file %s: %s", self.statefile, e)
+        except json.JSONDecodeError:
+            logging.error(
+                "Failed to load mplug file %s:", self.statefile, exc_info=True
+            )
             sys.exit(11)
         except FileNotFoundError:
             logging.debug("No packages installed yet.")
