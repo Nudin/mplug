@@ -1,11 +1,17 @@
 MPlug – a Plugin Manager for MPV
 ================================
 
-A plugin manager for mpv to easy install and uninstall mpv scripts and more.
+A plugin manager for [mpv](https://mpv.io/) to easy install and uninstall mpv scripts and more.
 
 Installation
 ------------
-- Install dependencies: python3, GitPython
+You can install it via pip:
+```
+$ pip3 install mplug
+```
+
+Alternatively you can run it from the source:
+- Install dependencies: python3, [GitPython](https://pypi.org/project/GitPython/)
 - Clone this repository
 - Run with `run.py`
 
