@@ -95,8 +95,14 @@ class MPlug:
         only remove the symlinks to the files.
         """
         if plugin_id not in self.installed_plugins:
-            logging.error("Not installed")
-            sys.exit(10)
+            potential_plugins = self.__plugin_id_by_name__(plugin_id)
+            if len(potential_plugins) != 1:
+                logging.error("Not installed: %s", plugin_id)
+                sys.exit(10)
+            elif ask_yes_no(f"Uninstall plugin {potential_plugins[0]}"):
+                plugin_id = potential_plugins[0]
+            else:
+                sys.exit(0)
         plugin = self.installed_plugins[plugin_id]
         if "install" not in plugin:
             logging.error(f"No installation method for {plugin_id}")
@@ -143,10 +149,7 @@ class MPlug:
         if pluginname in self.script_directory:
             return self.install(pluginname)
         else:
-            plugins = []
-            for key, value in self.script_directory.items():
-                if value["name"] == pluginname:
-                    plugins.append(key)
+            plugins = self.__plugin_id_by_name__(pluginname)
             return self.__install_from_list__(plugins)
 
     def search(self, seach_string: str):
@@ -292,6 +295,14 @@ class MPlug:
         self.scriptoptsdir = self.mpvdir / "script-opts"
         self.fontsdir = self.mpvdir / "fonts"
         self.directory_folder = self.workdir / self.directory_foldername
+
+    def __plugin_id_by_name__(self, pluginname: str) -> List[str]:
+        """Get the ids of all plugins with the give name."""
+        plugins = []
+        for key, value in self.script_directory.items():
+            if value["name"] == pluginname:
+                plugins.append(key)
+        return plugins
 
     @staticmethod
     def __clone_git__(repourl: str, gitdir: Path) -> Repo:
