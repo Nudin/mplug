@@ -130,7 +130,10 @@ class MPlug:
                 f"Can't install {plugin_id}: unknown installation method: {plugin['install']}"
             )
             sys.exit(5)
-        del self.installed_plugins[plugin_id]
+        if remove:
+            del self.installed_plugins[plugin_id]
+        else:
+            plugin["state"] = "disabled"
 
     def install_by_name(self, pluginname: str):
         """Install a plugin with the given name or id.
@@ -232,6 +235,7 @@ class MPlug:
         if "install-notes" in plugin:
             print(wrap(plugin["install-notes"]))
         plugin["install_date"] = datetime.now().isoformat()
+        plugin["state"] = "active"
         self.installed_plugins[plugin_id] = plugin
 
     def upgrade(self):
@@ -248,7 +252,10 @@ class MPlug:
         """List all installed plugins"""
         logging.debug("%i installed plugins", len(self.installed_plugins))
         for plugin_id, plugin in self.installed_plugins.items():
-            print(wrap(plugin_id, indent=int(self.verbose)))
+            text = plugin_id
+            if plugin.get("state") == "disabled":
+                text += " [DISABLED]"
+            print(wrap(text, indent=int(self.verbose)))
             if self.verbose:
                 print(wrap(plugin["desc"], indent=2))
 
@@ -320,6 +327,8 @@ class MPlug:
             filename = Path(file).name
             dst = folder / filename
             logging.info(f"Removing {dst}")
+            if not dst.exists():
+                continue
             if not dst.is_symlink():
                 logging.critical(
                     "File %s is not a symlink! It apparently was not installed by %s. Aborting.",

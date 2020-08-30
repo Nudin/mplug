@@ -443,7 +443,9 @@ def test_mplug_install_by_id_git_withexe(mpl, mocker, mock_files):
     )
     mock_files.os_symlink.assert_called_once_with(src_file, dst_file)
     assert mpl.installed_plugins != {}
+    assert plugin_id in mpl.installed_plugins
     assert mpl.installed_plugins[plugin_id]["exedir"] == exedir
+    mock_files.Path_exists.return_value = True
     mpl.uninstall(plugin_id)
     mock_files.shutil_rmtree.assert_called_once_with(plugin_dir)
     mock_files.os_remove.assert_called_once_with(dst_file)
@@ -478,6 +480,7 @@ def test_mplug_uninstall(fixture_installed_plugin, mock_files):
     plugin = mpl.installed_plugins[plugin_id]
     file_calls = [call(mpl.scriptdir / file) for file in plugin["scriptfiles"]]
     plugin_dir = mpl.workdir / plugin["gitdir"]
+    mock_files.Path_exists.return_value = True
     mpl.uninstall(plugin_id)
     mock_files.shutil_rmtree.assert_called_with(plugin_dir)
     mock_files.os_remove.assert_has_calls(file_calls)
@@ -523,6 +526,7 @@ def test_mplug_uninstall_wrong_file(fixture_installed_plugin, mock_files):
     prev_installed_plugins = mpl.installed_plugins.copy()
     mock_files.Path_is_symlink.return_value = False
     plugin_id = "plugin_id"
+    mock_files.Path_exists.return_value = True
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         mpl.uninstall(plugin_id)
     assert pytest_wrapped_e.type == SystemExit
