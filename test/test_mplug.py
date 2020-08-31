@@ -514,7 +514,7 @@ def test_mplug_uninstall_missing(fixture_installed_plugin):
     prev_installed_plugins = mpl.installed_plugins.copy()
     plugin_id = "not_existent_plugin_id"
     with pytest.raises(SystemExit) as pytest_wrapped_e:
-        mpl.uninstall(plugin_id)
+        mpl.uninstall_by_name(plugin_id)
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code != 0
     assert mpl.installed_plugins == prev_installed_plugins

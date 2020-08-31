@@ -24,8 +24,8 @@ def print_help():
 
         Available commands:
         - install NAME|ID          Install a plugin by name or plugin-id
-        - uninstall ID             Remove a plugin from the system
-        - disable ID               Disable a plugin without deleting it from the system
+        - uninstall NAME|ID        Remove a plugin from the system
+        - disable NAME|ID          Disable a plugin without deleting it from the system
         - search TEXT              Search for a plugin by name and description
         - update                   Update the list of available plugins
         - upgrade                  Update all plugins
@@ -38,17 +38,18 @@ logging.basicConfig(level="INFO", format="%(message)s")
 
 
 def main(operation: str, name: Optional[str] = None, verbose: bool = False):
+    """Load mplug and call the desired operation."""
     # Initialize mplug and load script directory
     plug = MPlug(verbose)
 
     if operation == "install":
         plug.install_by_name(name)
     elif operation == "uninstall":
-        plug.uninstall(name)
+        plug.uninstall_by_name(name)
     elif operation == "search":
         plug.search(name)
     elif operation == "disable":
-        plug.uninstall(name, remove=False)
+        plug.uninstall_by_name(name, remove=False)
     elif operation == "update":
         plug.update()
     elif operation == "upgrade":

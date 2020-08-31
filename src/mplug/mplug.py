@@ -97,15 +97,6 @@ class MPlug:
         remove: if True the tools folder will be deleted from disc. If False
         only remove the symlinks to the files.
         """
-        if plugin_id not in self.installed_plugins:
-            potential_plugins = self.__plugin_id_by_name__(plugin_id)
-            if len(potential_plugins) != 1:
-                logging.error("Not installed: %s", plugin_id)
-                sys.exit(10)
-            elif ask_yes_no(f"Uninstall plugin {potential_plugins[0]}"):
-                plugin_id = potential_plugins[0]
-            else:
-                sys.exit(0)
         plugin = self.installed_plugins[plugin_id]
         if "install" not in plugin:
             logging.error(f"No installation method for {plugin_id}")
@@ -138,6 +129,25 @@ class MPlug:
             del self.installed_plugins[plugin_id]
         else:
             plugin["state"] = "disabled"
+
+    def uninstall_by_name(self, pluginname: str, remove: bool = True):
+        """Uninstall a plugin with the given name or id."""
+        if pluginname in self.script_directory:
+            return self.uninstall(pluginname)
+        else:
+            potential_plugins = self.__plugin_id_by_name__(pluginname)
+            if len(potential_plugins) == 0:
+                logging.error("Not installed: %s", pluginname)
+                sys.exit(10)
+            elif len(potential_plugins) > 1:
+                logging.error(
+                    "Multiple matching plugins found, please specify plugin id."
+                )
+                sys.exit(10)
+            elif ask_yes_no(f"Uninstall plugin {potential_plugins[0]}"):
+                return self.uninstall(potential_plugins[0], remove)
+            else:
+                sys.exit(0)
 
     def install_by_name(self, pluginname: str):
         """Install a plugin with the given name or id.

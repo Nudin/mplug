@@ -72,15 +72,15 @@ def test_main(mocker):
     mock_save_state = mocker.patch("mplug.MPlug.save_state_to_disk")
     mock_install_by_name = mocker.patch("mplug.MPlug.install_by_name")
     mock_search = mocker.patch("mplug.MPlug.search")
-    mock_uninstall = mocker.patch("mplug.MPlug.uninstall")
+    mock_uninstall_by_name = mocker.patch("mplug.MPlug.uninstall_by_name")
     mock_list_installed = mocker.patch("mplug.MPlug.list_installed")
     mock_update = mocker.patch("mplug.MPlug.update")
     mock_upgrade = mocker.patch("mplug.MPlug.upgrade")
     argmap = {
         "install": mock_install_by_name,
         "search": mock_search,
-        "uninstall": mock_uninstall,
-        "disable": mock_uninstall,
+        "uninstall": mock_uninstall_by_name,
+        "disable": mock_uninstall_by_name,
         "update": mock_update,
         "upgrade": mock_upgrade,
         "list-installed": mock_list_installed,
