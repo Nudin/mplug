@@ -9,10 +9,13 @@ import logging
 import os
 import shutil
 import sys
+import tarfile
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
+import requests
 from git import Repo
 
 from .interaction import ask_num, ask_path, ask_yes_no
@@ -206,35 +209,52 @@ class MPlug:
         elif plugin["install"] == "git":
             gitdir = self.workdir / plugin["gitdir"]
             repourl = plugin["git"]
-            scriptfiles = plugin.get("scriptfiles", [])
-            shaderfiles = plugin.get("shaderfiles", [])
-            fontfiles = plugin.get("fontfiles", [])
-            scriptoptfiles = plugin.get("scriptoptfiles", [])
-            exefiles = plugin.get("exefiles", [])
             logging.debug("Clone git repo %s to %s", repourl, gitdir)
             self.__clone_git__(repourl, gitdir)
-            self.__install_files__(
-                srcdir=gitdir, filelist=scriptfiles, dstdir=self.scriptdir
-            )
-            self.__install_files__(
-                srcdir=gitdir, filelist=shaderfiles, dstdir=self.shaderdir
-            )
-            self.__install_files__(
-                srcdir=gitdir, filelist=fontfiles, dstdir=self.fontsdir
-            )
-            self.__install_files__(
-                srcdir=gitdir, filelist=scriptoptfiles, dstdir=self.scriptoptsdir
-            )
-            if exefiles:
-                exedir = ask_path("Where to put executable files?", Path("~/bin"))
-                logging.info("Placing executables in %s", str(exedir))
-                self.__install_files__(srcdir=gitdir, filelist=exefiles, dstdir=exedir)
-                plugin["exedir"] = str(exedir)
+            srcdir = gitdir
+        elif plugin["install"] == "url":
+            srcdir = self.workdir / plugin["tardir"]
+            filename = plugin["filename"]
+            url = plugin["script_url"]
+            logging.debug("Downloading %s to %s", url, srcdir)
+            r = requests.get(url)
+            with open(srcdir / filename, "wb") as f:
+                f.write(r.content)
+        elif plugin["install"] == "tar":
+            srcdir = self.workdir / plugin["tardir"]
+            tarurl = plugin["script_url"]
+            logging.debug("Downloading %s to %s", tarurl, srcdir)
+            r = requests.get(tarurl)
+            with tempfile.TemporaryFile("rb+") as tmp:
+                tmp.write(r.content)
+                tmp.seek(0)
+                tar = tarfile.TarFile(fileobj=tmp)
+                tar.extractall(srcdir)
         else:
             logging.error(
                 f"Can't install {plugin_id}: unknown installation method: {plugin['install']}"
             )
             sys.exit(5)
+        scriptfiles = plugin.get("scriptfiles", [])
+        shaderfiles = plugin.get("shaderfiles", [])
+        fontfiles = plugin.get("fontfiles", [])
+        scriptoptfiles = plugin.get("scriptoptfiles", [])
+        exefiles = plugin.get("exefiles", [])
+        self.__install_files__(
+            srcdir=srcdir, filelist=scriptfiles, dstdir=self.scriptdir
+        )
+        self.__install_files__(
+            srcdir=srcdir, filelist=shaderfiles, dstdir=self.shaderdir
+        )
+        self.__install_files__(srcdir=srcdir, filelist=fontfiles, dstdir=self.fontsdir)
+        self.__install_files__(
+            srcdir=srcdir, filelist=scriptoptfiles, dstdir=self.scriptoptsdir
+        )
+        if exefiles:
+            exedir = ask_path("Where to put executable files?", Path("~/bin"))
+            logging.info("Placing executables in %s", str(exedir))
+            self.__install_files__(srcdir=srcdir, filelist=exefiles, dstdir=exedir)
+            plugin["exedir"] = str(exedir)
         if "install-notes" in plugin:
             print(wrap(plugin["install-notes"]))
         plugin["install_date"] = datetime.now().isoformat()
