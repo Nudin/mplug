@@ -455,8 +455,18 @@ def test_mplug_install_by_id_git_withexe(mpl, mocker, mock_files):
 def test_mplug_upgrade(mpl, mock_files):
     """Upgrade multiple plugins."""
     mpl.installed_plugins = {
-        "foo": {"install": "git", "name": "foo", "install_dir": "foodir"},
-        "bar": {"install": "git", "name": "bar", "install_dir": "bardir"},
+        "foo": {
+            "install": "git",
+            "receiving_url": "url",
+            "name": "foo",
+            "install_dir": "foodir",
+        },
+        "bar": {
+            "install": "git",
+            "receiving_url": "url",
+            "name": "bar",
+            "install_dir": "bardir",
+        },
     }
     call_list = [
         call(mpl.workdir / plugin["install_dir"])

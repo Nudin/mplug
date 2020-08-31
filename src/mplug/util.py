@@ -38,7 +38,7 @@ def download_tar(url: str, directory: Path):
     with tempfile.TemporaryFile("rb+") as tmp:
         tmp.write(r.content)
         tmp.seek(0)
-        tar = tarfile.TarFile(fileobj=tmp)
+        tar = tarfile.open(fileobj=tmp)
         tar.extractall(directory)
 
 def resolve_templates(text: str) -> str:

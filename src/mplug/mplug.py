@@ -247,12 +247,22 @@ class MPlug:
         """Upgrade all repositories in the working directory."""
         self.update()
         for plugin in self.installed_plugins.values():
+            logging.info("Updating plugin %s", plugin["name"])
+            install_dir = self.workdir / plugin["install_dir"]
+            url = resolve_templates(plugin["receiving_url"])
             if plugin["install"] == "git":
-                install_dir = self.workdir / plugin["install_dir"]
-                logging.info("Updating plugin %s", plugin["name"])
                 logging.debug("Updating repo in %s", install_dir)
                 repo = Repo(install_dir)
                 repo.remote().pull()
+            elif plugin["install"] == "tar":
+                logging.debug("Downloading %s to %s", url, install_dir)
+                download_tar(url, install_dir)
+            elif plugin["install"] == "url":
+                filename = plugin["filename"]
+                logging.debug("Downloading %s to %s", url, install_dir)
+                download_file(url, install_dir / filename)
+            else:
+                logging.error("Cannot upgrade %s – installation directory.")
 
     def list_installed(self):
         """List all installed plugins"""
