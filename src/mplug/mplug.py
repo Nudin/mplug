@@ -244,6 +244,11 @@ class MPlug:
         for filetype, directory in self.installation_dirs.items():
             filelist = plugin.get(filetype, [])
             self.__install_files__(srcdir=srcdir, filelist=filelist, dstdir=directory)
+        if "ladspafiles" in plugin and os.getenv("LADSPA_PATH") is None:
+            logging.warning(
+                "Set the environment variable LADSPA_PATH to '%s'.",
+                self.installation_dirs["ladspafiles"],
+            )
         if "exefiles" in plugin:
             exedir = ask_path("Where to put executable files?", Path("~/bin"))
             logging.info("Placing executables in %s", str(exedir))
@@ -306,12 +311,21 @@ class MPlug:
                 self.mpvdir,
             )
         logging.debug("mpvdir: %s", self.mpvdir)
+        # directory for ladspa filters, fallback according to:
+        # https://www.ladspa.org/ladspa_sdk/shared_plugins.html
+        ladspa_path = os.getenv("LADSPA_PATH")
+        if ladspa_path:
+            ladspa_dir = Path(ladspa_path.split(":")[0])
+        else:
+            ladspa_dir = Path.home() / ".ladspa"
         self.installation_dirs = {
             "scriptfiles": self.mpvdir / "scripts",
             "shaderfiles": self.mpvdir / "shaders",
             "fontfiles": self.mpvdir / "fonts",
             "scriptoptfiles": self.mpvdir / "script-opts",
+            "ladspafiles": ladspa_dir,
         }
+        # Directory for MPlug this is where all plugin files will be stored
         self.directory_folder = self.workdir / self.directory_foldername
 
     def __plugin_id_by_name__(self, pluginname: str) -> List[str]:
