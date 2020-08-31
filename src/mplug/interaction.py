@@ -5,8 +5,6 @@
 # Copyright (C) Michael F. Schönitzer, 2020
 
 import itertools
-import shutil
-import textwrap
 from pathlib import Path
 from typing import List, Optional
 

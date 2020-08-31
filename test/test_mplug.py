@@ -478,7 +478,8 @@ def test_mplug_uninstall(fixture_installed_plugin, mock_files):
     mpl = fixture_installed_plugin
     plugin_id = "plugin_id"
     plugin = mpl.installed_plugins[plugin_id]
-    file_calls = [call(mpl.scriptdir / file) for file in plugin["scriptfiles"]]
+    scriptdir = mpl.installation_dirs["scriptfiles"]
+    file_calls = [call(scriptdir / file) for file in plugin["scriptfiles"]]
     plugin_dir = mpl.workdir / plugin["gitdir"]
     mock_files.Path_exists.return_value = True
     mpl.uninstall(plugin_id)

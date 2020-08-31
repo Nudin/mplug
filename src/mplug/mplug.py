@@ -88,7 +88,7 @@ class MPlug:
 
     def update(self):
         """Get or update the 'mpv script directory'."""
-        logging.info(f"Updating {self.directory_filename}")
+        logging.info("Updating %s", self.directory_filename)
         self.__clone_git__(self.directory_remoteurl, self.directory_folder)
 
     def uninstall(self, plugin_id: str, remove: bool = True):
@@ -113,17 +113,12 @@ class MPlug:
         elif plugin["install"] == "git":
             logging.debug("Remove links of {plugin_id}")
             gitdir = self.workdir / plugin["gitdir"]
-            scriptfiles = plugin.get("scriptfiles", [])
-            shaderfiles = plugin.get("shaderfiles", [])
-            fontfiles = plugin.get("fontfiles", [])
-            scriptoptfiles = plugin.get("scriptoptfiles", [])
+            for filetype, directory in self.installation_dirs.items():
+                filelist = plugin.get(filetype, [])
+                self.__uninstall_files__(filelist, directory)
             exefiles = plugin.get("exefiles", [])
-            exedir = plugin.get("exedir")
-            self.__uninstall_files__(scriptfiles, self.scriptdir)
-            self.__uninstall_files__(scriptoptfiles, self.scriptoptsdir)
-            self.__uninstall_files__(fontfiles, self.fontsdir)
-            self.__uninstall_files__(shaderfiles, self.shaderdir)
             if exefiles:
+                exedir = plugin.get("exedir")
                 if exedir:
                     logging.debug("Remove link to executables in %s", exedir)
                     self.__uninstall_files__(exefiles, Path(exedir))
@@ -201,7 +196,8 @@ class MPlug:
             lines of JSON. Please add them and create a PR. You can find an
             introduction here:
             """
-            url = "https://github.com/Nudin/mpv-script-directory/blob/master/HOWTO_ADD_INSTALL_INSTRUCTIONS.md"
+            url = "https://github.com/Nudin/mpv-script-directory/"
+            url += "blob/master/HOWTO_ADD_INSTALL_INSTRUCTIONS.md"
             logging.error(errormsg)
             logging.error(wrap(explanation, indent=1, dedent=True))
             logging.error(url)
@@ -235,25 +231,15 @@ class MPlug:
                 f"Can't install {plugin_id}: unknown installation method: {plugin['install']}"
             )
             sys.exit(5)
-        scriptfiles = plugin.get("scriptfiles", [])
-        shaderfiles = plugin.get("shaderfiles", [])
-        fontfiles = plugin.get("fontfiles", [])
-        scriptoptfiles = plugin.get("scriptoptfiles", [])
-        exefiles = plugin.get("exefiles", [])
-        self.__install_files__(
-            srcdir=srcdir, filelist=scriptfiles, dstdir=self.scriptdir
-        )
-        self.__install_files__(
-            srcdir=srcdir, filelist=shaderfiles, dstdir=self.shaderdir
-        )
-        self.__install_files__(srcdir=srcdir, filelist=fontfiles, dstdir=self.fontsdir)
-        self.__install_files__(
-            srcdir=srcdir, filelist=scriptoptfiles, dstdir=self.scriptoptsdir
-        )
-        if exefiles:
+        for filetype, directory in self.installation_dirs.items():
+            filelist = plugin.get(filetype, [])
+            self.__install_files__(srcdir=srcdir, filelist=filelist, dstdir=directory)
+        if "exefiles" in plugin:
             exedir = ask_path("Where to put executable files?", Path("~/bin"))
             logging.info("Placing executables in %s", str(exedir))
-            self.__install_files__(srcdir=srcdir, filelist=exefiles, dstdir=exedir)
+            self.__install_files__(
+                srcdir=srcdir, filelist=plugin["exefiles"], dstdir=exedir
+            )
             plugin["exedir"] = str(exedir)
         if "install-notes" in plugin:
             print(wrap(plugin["install-notes"]))
@@ -310,10 +296,12 @@ class MPlug:
                 self.mpvdir,
             )
         logging.debug("mpvdir: %s", self.mpvdir)
-        self.scriptdir = self.mpvdir / "scripts"
-        self.shaderdir = self.mpvdir / "shaders"
-        self.scriptoptsdir = self.mpvdir / "script-opts"
-        self.fontsdir = self.mpvdir / "fonts"
+        self.installation_dirs = {
+            "scriptfiles": self.mpvdir / "scripts",
+            "shaderfiles": self.mpvdir / "shaders",
+            "fontfiles": self.mpvdir / "fonts",
+            "scriptoptfiles": self.mpvdir / "script-opts",
+        }
         self.directory_folder = self.workdir / self.directory_foldername
 
     def __plugin_id_by_name__(self, pluginname: str) -> List[str]:
