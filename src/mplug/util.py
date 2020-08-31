@@ -1,3 +1,4 @@
+import platform
 import shutil
 import textwrap
 
@@ -17,3 +18,26 @@ def wrap(text, indent=0, dedent=False):
         text = textwrap.dedent(text)
     lines = [wrapper.fill(line) for line in text.splitlines()]
     return "\n".join(lines)
+
+
+def resolve_templates(text: str) -> str:
+    """Replace placeholders in the given url/filename.
+
+    Supported placeholders:
+    - {{os}} -> linux, windows, …
+    - {{arch}} -> x86_64, x86_32, …
+    - {{arch-short}} -> x64, x32
+    - {{shared-lib-ext}} -> so, dll
+    """
+    os = platform.system().lower()
+    arch = platform.machine()
+    arch_short = arch.replace("x86_", "x")
+    if os == "windows":
+        shared_lib_ext = "dll"
+    else:
+        shared_lib_ext = "so"
+    text = text.replace("{{shared-lib-ext}}", shared_lib_ext)
+    text = text.replace("{{os}}", os)
+    text = text.replace("{{arch}}", arch)
+    text = text.replace("{{arch-short}}", arch_short)
+    return text

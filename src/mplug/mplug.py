@@ -19,7 +19,7 @@ import requests
 from git import Repo
 
 from .interaction import ask_num, ask_path, ask_yes_no
-from .util import wrap
+from .util import resolve_templates, wrap
 
 NAME = "mplug"
 VERSION = "0.1"
@@ -214,21 +214,21 @@ class MPlug:
             sys.exit(4)
         elif plugin["install"] == "git":
             gitdir = self.workdir / plugin["gitdir"]
-            repourl = plugin["git"]
+            repourl = resolve_templates(plugin["git"])
             logging.debug("Clone git repo %s to %s", repourl, gitdir)
             self.__clone_git__(repourl, gitdir)
             srcdir = gitdir
         elif plugin["install"] == "url":
             srcdir = self.workdir / plugin["tardir"]
             filename = plugin["filename"]
-            url = plugin["script_url"]
+            url = resolve_templates(plugin["script_url"])
             logging.debug("Downloading %s to %s", url, srcdir)
             r = requests.get(url)
             with open(srcdir / filename, "wb") as f:
                 f.write(r.content)
         elif plugin["install"] == "tar":
             srcdir = self.workdir / plugin["tardir"]
-            tarurl = plugin["script_url"]
+            tarurl = resolve_templates(plugin["script_url"])
             logging.debug("Downloading %s to %s", tarurl, srcdir)
             r = requests.get(tarurl)
             with tempfile.TemporaryFile("rb+") as tmp:
@@ -354,6 +354,7 @@ class MPlug:
             logging.debug("Create directory %s", dstdir)
             os.makedirs(dstdir)
         for file in filelist:
+            file = resolve_templates(file)
             src = srcdir / file
             filename = Path(file).name
             dst = dstdir / filename
@@ -367,6 +368,7 @@ class MPlug:
     def __uninstall_files__(filelist: List[str], folder: Path):
         """Remove symlinks."""
         for file in filelist:
+            file = resolve_templates(file)
             filename = Path(file).name
             dst = folder / filename
             logging.info(f"Removing {dst}")
