@@ -1,6 +1,11 @@
 import platform
 import shutil
+import tarfile
+import tempfile
 import textwrap
+from pathlib import Path
+
+import requests
 
 
 def wrap(text, indent=0, dedent=False):
@@ -19,6 +24,22 @@ def wrap(text, indent=0, dedent=False):
     lines = [wrapper.fill(line) for line in text.splitlines()]
     return "\n".join(lines)
 
+
+def download_file(url: str, filename: Path):
+    """Dowload file and save it to disk."""
+    r = requests.get(url)
+    with open(filename, "wb") as f:
+        f.write(r.content)
+
+
+def download_tar(url: str, directory: Path):
+    """Download and extract a tarbar to the give directory."""
+    r = requests.get(url)
+    with tempfile.TemporaryFile("rb+") as tmp:
+        tmp.write(r.content)
+        tmp.seek(0)
+        tar = tarfile.TarFile(fileobj=tmp)
+        tar.extractall(directory)
 
 def resolve_templates(text: str) -> str:
     """Replace placeholders in the given url/filename.

@@ -337,15 +337,15 @@ def test_mplug_install_by_id_git(mpl, mock_files):
     mpl.script_directory[plugin_id] = {
         "name": plugin_id,
         "install": "git",
-        "git": repo_url,
-        "gitdir": "gitdir",
+        "receiving_url": repo_url,
+        "install_dir": "install_dir",
         "scriptfiles": ["file1"],
         "install-notes": "Message to be shown after the install.",
     }
-    gitdir = mpl.workdir / "gitdir"
+    install_dir = mpl.workdir / "install_dir"
     mpl.install_by_name(plugin_id)
     mock_files.Repo_clone_from.assert_called_with(
-        repo_url, gitdir, multi_options=["--depth 1"]
+        repo_url, install_dir, multi_options=["--depth 1"]
     )
     mock_files.os_symlink.assert_called_once()
     assert mpl.installed_plugins != {}
@@ -363,15 +363,15 @@ def fixture_installed_plugin(mpl, mock_files):
     mpl.script_directory[plugin_id] = {
         "name": plugin_id,
         "install": "git",
-        "git": repo_url,
-        "gitdir": "gitdir",
+        "receiving_url": repo_url,
+        "install_dir": "install_dir",
         "scriptfiles": ["file1"],
         "install-notes": "Message to be shown after the install.",
     }
-    gitdir = mpl.workdir / "gitdir"
+    install_dir = mpl.workdir / "install_dir"
     mpl.install_by_name(plugin_id)
     mock_files.Repo_clone_from.assert_called_with(
-        repo_url, gitdir, multi_options=["--depth 1"]
+        repo_url, install_dir, multi_options=["--depth 1"]
     )
     mock_files.os_symlink.assert_called_once()
     assert mpl.installed_plugins != {}
@@ -388,8 +388,8 @@ def test_mplug_install_by_id_git_filepresent(mpl, mock_files, mocker):
     mpl.script_directory[searchterm] = {
         "name": searchterm,
         "install": "git",
-        "git": repo_url,
-        "gitdir": "gitdir",
+        "receiving_url": repo_url,
+        "install_dir": "install_dir",
         "scriptfiles": ["file1"],
     }
     mpl.install_by_name(searchterm)
@@ -407,8 +407,8 @@ def test_mplug_install_by_id_git_repopresent(mpl, mock_files):
     mpl.script_directory[searchterm] = {
         "name": searchterm,
         "install": "git",
-        "git": repo_url,
-        "gitdir": "gitdir",
+        "receiving_url": repo_url,
+        "install_dir": "install_dir",
         "scriptfiles": ["file1"],
     }
     mpl.install_by_name(searchterm)
@@ -430,11 +430,11 @@ def test_mplug_install_by_id_git_withexe(mpl, mocker, mock_files):
     mpl.script_directory[plugin_id] = {
         "name": plugin_id,
         "install": "git",
-        "git": repo_url,
-        "gitdir": "gitdir",
+        "receiving_url": repo_url,
+        "install_dir": "install_dir",
         "exefiles": [filename],
     }
-    plugin_dir = mpl.workdir / "gitdir"
+    plugin_dir = mpl.workdir / "install_dir"
     src_file = plugin_dir / filename
     dst_file = Path(exedir) / filename
     mpl.install_by_name(plugin_id)
@@ -455,11 +455,11 @@ def test_mplug_install_by_id_git_withexe(mpl, mocker, mock_files):
 def test_mplug_upgrade(mpl, mock_files):
     """Upgrade multiple plugins."""
     mpl.installed_plugins = {
-        "foo": {"name": "foo", "gitdir": "foodir"},
-        "bar": {"name": "bar", "gitdir": "bardir"},
+        "foo": {"install": "git", "name": "foo", "install_dir": "foodir"},
+        "bar": {"install": "git", "name": "bar", "install_dir": "bardir"},
     }
     call_list = [
-        call(mpl.workdir / plugin["gitdir"])
+        call(mpl.workdir / plugin["install_dir"])
         for plugin in mpl.installed_plugins.values()
     ]
     mpl.upgrade()
@@ -480,32 +480,12 @@ def test_mplug_uninstall(fixture_installed_plugin, mock_files):
     plugin = mpl.installed_plugins[plugin_id]
     scriptdir = mpl.installation_dirs["scriptfiles"]
     file_calls = [call(scriptdir / file) for file in plugin["scriptfiles"]]
-    plugin_dir = mpl.workdir / plugin["gitdir"]
+    plugin_dir = mpl.workdir / plugin["install_dir"]
     mock_files.Path_exists.return_value = True
     mpl.uninstall(plugin_id)
     mock_files.shutil_rmtree.assert_called_with(plugin_dir)
     mock_files.os_remove.assert_has_calls(file_calls)
     assert mpl.installed_plugins == {}
-
-
-def test_mplug_uninstall_by_id_no_method(mpl):
-    """Try to install a plugin, that has no installation method."""
-    searchterm = "searchterm"
-    mpl.script_directory[searchterm] = {"name": searchterm}
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        mpl.uninstall(searchterm)
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code != 0
-
-
-def test_mplug_uninstall_by_id_unknown_method(mpl):
-    """Try to install a plugin, that has an invalid/unknown installation method."""
-    searchterm = "searchterm"
-    mpl.script_directory[searchterm] = {"name": searchterm, "install": "unknown_method"}
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        mpl.uninstall(searchterm)
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code != 0
 
 
 def test_mplug_uninstall_missing(fixture_installed_plugin):

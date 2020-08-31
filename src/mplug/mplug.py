@@ -9,17 +9,14 @@ import logging
 import os
 import shutil
 import sys
-import tarfile
-import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
-import requests
 from git import Repo
 
 from .interaction import ask_num, ask_path, ask_yes_no
-from .util import resolve_templates, wrap
+from .util import download_file, download_tar, resolve_templates, wrap
 
 NAME = "mplug"
 VERSION = "0.1"
@@ -98,33 +95,22 @@ class MPlug:
         only remove the symlinks to the files.
         """
         plugin = self.installed_plugins[plugin_id]
-        if "install" not in plugin:
-            logging.error(f"No installation method for {plugin_id}")
-            sys.exit(4)
-        elif plugin["install"] == "git":
-            logging.debug("Remove links of {plugin_id}")
-            gitdir = self.workdir / plugin["gitdir"]
-            for filetype, directory in self.installation_dirs.items():
-                filelist = plugin.get(filetype, [])
-                self.__uninstall_files__(filelist, directory)
-            exefiles = plugin.get("exefiles", [])
-            if exefiles:
-                exedir = plugin.get("exedir")
-                if exedir:
-                    logging.debug("Remove link to executables in %s", exedir)
-                    self.__uninstall_files__(exefiles, Path(exedir))
-                else:
-                    logging.error(
-                        "Can't uninstall files %s: unknown location.", exefiles
-                    )
-            if remove:
-                logging.info(f"Remove directory {gitdir}")
-                shutil.rmtree(gitdir)
-        else:
-            logging.error(
-                f"Can't install {plugin_id}: unknown installation method: {plugin['install']}"
-            )
-            sys.exit(5)
+        logging.debug("Remove links of {plugin_id}")
+        install_dir = self.workdir / plugin["install_dir"]
+        for filetype, directory in self.installation_dirs.items():
+            filelist = plugin.get(filetype, [])
+            self.__uninstall_files__(filelist, directory)
+        exefiles = plugin.get("exefiles", [])
+        if exefiles:
+            exedir = plugin.get("exedir")
+            if exedir:
+                logging.debug("Remove link to executables in %s", exedir)
+                self.__uninstall_files__(exefiles, Path(exedir))
+            else:
+                logging.error("Can't uninstall files %s: unknown location.", exefiles)
+        if remove:
+            logging.info(f"Remove directory {install_dir}")
+            shutil.rmtree(install_dir)
         if remove:
             del self.installed_plugins[plugin_id]
         else:
@@ -212,30 +198,23 @@ class MPlug:
             logging.error(wrap(explanation, indent=1, dedent=True))
             logging.error(url)
             sys.exit(4)
-        elif plugin["install"] == "git":
-            gitdir = self.workdir / plugin["gitdir"]
-            repourl = resolve_templates(plugin["git"])
-            logging.debug("Clone git repo %s to %s", repourl, gitdir)
-            self.__clone_git__(repourl, gitdir)
-            srcdir = gitdir
+
+        try:
+            install_dir = self.workdir / plugin["install_dir"]
+            url = resolve_templates(plugin["receiving_url"])
+        except KeyError as keyerror:
+            logging.error("Missing field %s", keyerror.args[0])
+            sys.exit(13)
+        if plugin["install"] == "git":
+            logging.debug("Clone git repo %s to %s", url, install_dir)
+            self.__clone_git__(url, install_dir)
         elif plugin["install"] == "url":
-            srcdir = self.workdir / plugin["tardir"]
             filename = plugin["filename"]
-            url = resolve_templates(plugin["script_url"])
-            logging.debug("Downloading %s to %s", url, srcdir)
-            r = requests.get(url)
-            with open(srcdir / filename, "wb") as f:
-                f.write(r.content)
+            logging.debug("Downloading %s to %s", url, install_dir)
+            download_file(url, install_dir / filename)
         elif plugin["install"] == "tar":
-            srcdir = self.workdir / plugin["tardir"]
-            tarurl = resolve_templates(plugin["script_url"])
-            logging.debug("Downloading %s to %s", tarurl, srcdir)
-            r = requests.get(tarurl)
-            with tempfile.TemporaryFile("rb+") as tmp:
-                tmp.write(r.content)
-                tmp.seek(0)
-                tar = tarfile.TarFile(fileobj=tmp)
-                tar.extractall(srcdir)
+            logging.debug("Downloading %s to %s", url, install_dir)
+            download_tar(url, install_dir)
         else:
             logging.error(
                 f"Can't install {plugin_id}: unknown installation method: {plugin['install']}"
@@ -243,7 +222,9 @@ class MPlug:
             sys.exit(5)
         for filetype, directory in self.installation_dirs.items():
             filelist = plugin.get(filetype, [])
-            self.__install_files__(srcdir=srcdir, filelist=filelist, dstdir=directory)
+            self.__install_files__(
+                srcdir=install_dir, filelist=filelist, dstdir=directory
+            )
         if "ladspafiles" in plugin and os.getenv("LADSPA_PATH") is None:
             logging.warning(
                 "Set the environment variable LADSPA_PATH to '%s'.",
@@ -253,7 +234,7 @@ class MPlug:
             exedir = ask_path("Where to put executable files?", Path("~/bin"))
             logging.info("Placing executables in %s", str(exedir))
             self.__install_files__(
-                srcdir=srcdir, filelist=plugin["exefiles"], dstdir=exedir
+                srcdir=install_dir, filelist=plugin["exefiles"], dstdir=exedir
             )
             plugin["exedir"] = str(exedir)
         if "install-notes" in plugin:
@@ -266,11 +247,12 @@ class MPlug:
         """Upgrade all repositories in the working directory."""
         self.update()
         for plugin in self.installed_plugins.values():
-            gitdir = self.workdir / plugin["gitdir"]
-            logging.info("Updating plugin %s", plugin["name"])
-            logging.debug("Updating repo in %s", gitdir)
-            repo = Repo(gitdir)
-            repo.remote().pull()
+            if plugin["install"] == "git":
+                install_dir = self.workdir / plugin["install_dir"]
+                logging.info("Updating plugin %s", plugin["name"])
+                logging.debug("Updating repo in %s", install_dir)
+                repo = Repo(install_dir)
+                repo.remote().pull()
 
     def list_installed(self):
         """List all installed plugins"""
