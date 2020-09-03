@@ -41,6 +41,7 @@ def download_tar(url: str, directory: Path):
         tar = tarfile.open(fileobj=tmp)
         tar.extractall(directory)
 
+
 def resolve_templates(text: str) -> str:
     """Replace placeholders in the given url/filename.
 

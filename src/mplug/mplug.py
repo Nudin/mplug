@@ -7,6 +7,7 @@
 import json
 import logging
 import os
+import platform
 import shutil
 import sys
 from datetime import datetime
@@ -199,6 +200,14 @@ class MPlug:
             logging.error(url)
             sys.exit(4)
 
+        if plugin.get("os", []):
+            current_os = platform.system().title()
+            if current_os not in plugin["os"]:
+                os_string = ", ".join(plugin["os"])
+                if not ask_yes_no(
+                    "Warning: This plugin works only on: %s. Continue?" % os_string
+                ):
+                    sys.exit(0)
         try:
             install_dir = self.workdir / plugin["install_dir"]
             url = resolve_templates(plugin["receiving_url"])
