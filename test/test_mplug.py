@@ -43,6 +43,7 @@ def fixture_mock_files(mocker):
             "Path_glob",
             "Path_is_symlink",
             "Path_stat",
+            "Path_resolve",
         ],
     )
     current_timestamp = datetime.now().timestamp()
@@ -64,6 +65,7 @@ def fixture_mock_files(mocker):
             "mplug.mplug.Path.stat",
             return_value=mocker.Mock(st_mtime=current_timestamp),
         ),
+        mocker.patch("mplug.mplug.Path.resolve", return_value=Path(".")),
     )
 
 
@@ -329,9 +331,10 @@ def test_mplug_install_by_id_unknown_method(mpl):
     assert pytest_wrapped_e.value.code != 0
 
 
-def test_mplug_install_by_id_git(mpl, mock_files):
+def test_mplug_install_by_id_git(mpl, mock_files, mocker):
     """Successfully install a plugin by it's id via git."""
     mock_files.Path_exists.return_value = False
+    install = mocker.patch("mplug.mplug.MPlug.__install_files__", return_value=None)
     plugin_id = "plugin_id"
     repo_url = " git_url"
     mpl.script_directory[plugin_id] = {
@@ -347,17 +350,19 @@ def test_mplug_install_by_id_git(mpl, mock_files):
     mock_files.Repo_clone_from.assert_called_with(
         repo_url, install_dir, multi_options=["--depth 1"]
     )
-    mock_files.os_symlink.assert_called_once()
+    install.assert_called()
     assert mpl.installed_plugins != {}
 
 
 @pytest.fixture()
-def fixture_installed_plugin(mpl, mock_files):
+def fixture_installed_plugin(mpl, mock_files, mocker):
     """Successfully install a plugin by it's id via git.
 
     This fixture is used to test uninstallments, it is basically identical to
     test_mplug_install_by_id_git."""
+    mock_files.Path_is_symlink.return_value = False
     mock_files.Path_exists.return_value = False
+    install = mocker.patch("mplug.mplug.MPlug.__install_files__", return_value=None)
     plugin_id = "plugin_id"
     repo_url = " git_url"
     mpl.script_directory[plugin_id] = {
@@ -373,7 +378,7 @@ def fixture_installed_plugin(mpl, mock_files):
     mock_files.Repo_clone_from.assert_called_with(
         repo_url, install_dir, multi_options=["--depth 1"]
     )
-    mock_files.os_symlink.assert_called_once()
+    install.assert_called()
     assert mpl.installed_plugins != {}
     return mpl
 
@@ -381,6 +386,7 @@ def fixture_installed_plugin(mpl, mock_files):
 def test_mplug_install_by_id_git_filepresent(mpl, mock_files, mocker):
     """Successfully install a plugin by it's id via git. The symlink already
     exists."""
+    mock_files.Path_is_symlink.return_value = True
     mock_files.Path_exists.return_value = True
     mock_repo_clone = mocker.spy(mplug.MPlug, "__clone_git__")
     searchterm = "searchterm"
@@ -422,6 +428,7 @@ def test_mplug_install_by_id_git_repopresent(mpl, mock_files):
 def test_mplug_install_by_id_git_withexe(mpl, mocker, mock_files):
     """Successfully install and uninstall a plugin containing an executable."""
     mock_files.Path_exists.return_value = False
+    install = mocker.patch("mplug.mplug.MPlug.__install_files__", return_value=None)
     exedir = "path_of_executables"
     mocker.patch("mplug.mplug.ask_path", return_value=Path(exedir))
     plugin_id = "plugin_id"
@@ -435,16 +442,15 @@ def test_mplug_install_by_id_git_withexe(mpl, mocker, mock_files):
         "exefiles": [filename],
     }
     plugin_dir = mpl.workdir / "install_dir"
-    src_file = plugin_dir / filename
     dst_file = Path(exedir) / filename
     mpl.install_by_name(plugin_id)
     mock_files.Repo_clone_from.assert_called_with(
         repo_url, plugin_dir, multi_options=["--depth 1"]
     )
-    mock_files.os_symlink.assert_called_once_with(src_file, dst_file)
     assert mpl.installed_plugins != {}
     assert plugin_id in mpl.installed_plugins
     assert mpl.installed_plugins[plugin_id]["exedir"] == exedir
+    install.assert_called()
     mock_files.Path_exists.return_value = True
     mpl.uninstall(plugin_id)
     mock_files.shutil_rmtree.assert_called_once_with(plugin_dir)
@@ -486,6 +492,7 @@ def test_mplug_list_installed(mpl):
 def test_mplug_uninstall(fixture_installed_plugin, mock_files):
     """Uninstall a previously installed plugin."""
     mpl = fixture_installed_plugin
+    mock_files.Path_is_symlink.return_value = True
     plugin_id = "plugin_id"
     plugin = mpl.installed_plugins[plugin_id]
     scriptdir = mpl.installation_dirs["scriptfiles"]

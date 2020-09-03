@@ -349,8 +349,30 @@ class MPlug:
             file = resolve_templates(file)
             src = srcdir / file
             filename = Path(file).name
+            if not src.exists():
+                logging.error(
+                    "File %s does not exsist. "
+                    + "Check information in mpv script directory for correctness.",
+                    src,
+                )
+                sys.exit(14)
             dst = dstdir / filename
-            if dst.exists():
+            if dst.exists() and not dst.is_symlink():
+                logging.error(
+                    "File already exists and is not a symlink: %s Aborting.", dst
+                )
+                sys.exit(15)
+            if dst.is_symlink() and dst.resolve() != src.resolve():
+                logging.info(
+                    "File already exists and points to wrong target: %s -> %s",
+                    dst,
+                    dst.resolve(),
+                )
+                if ask_yes_no("Overwrite file?"):
+                    os.remove(dst)
+                else:
+                    sys.exit(15)
+            if dst.is_symlink() and dst.resolve() == src.resolve():
                 logging.info("File already exists: %s", dst)
                 continue
             logging.debug("Copying file %s to %s", filename, dst)
