@@ -20,7 +20,6 @@ from .interaction import ask_num, ask_path, ask_yes_no
 from .util import download_file, download_tar, resolve_templates, wrap
 
 NAME = "mplug"
-VERSION = "0.1"
 
 
 class MPlug:

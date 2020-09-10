@@ -12,8 +12,19 @@ from typing import Optional
 
 from .mplug import MPlug
 
+try:
+    from importlib.metadata import (PackageNotFoundError,  # type: ignore
+                                    version)
+except ImportError:  # pragma: no cover
+    from importlib_metadata import (PackageNotFoundError,  # type: ignore
+                                    version)
+
+
 NAME = "mplug"
-VERSION = "0.1.0"
+try:
+    VERSION = version(__name__)
+except PackageNotFoundError:  # pragma: no cover
+    VERSION = "unknown"
 
 
 def print_help():
