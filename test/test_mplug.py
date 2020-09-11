@@ -55,9 +55,9 @@ def fixture_mock_files(mocker):
         mocker.patch("os.symlink", return_value=None),
         mocker.patch("os.remove", return_value=None),
         mocker.patch("shutil.rmtree", return_value=None),
-        mocker.patch("mplug.mplug.Repo.clone_from", return_value=None),
-        mocker.patch("mplug.mplug.Repo.__init__", return_value=None),
-        mocker.patch("mplug.mplug.Repo.remote", return_value=mocker.Mock()),
+        mocker.patch("mplug.download.Repo.clone_from", return_value=None),
+        mocker.patch("mplug.download.Repo.__init__", return_value=None),
+        mocker.patch("mplug.download.Repo.remote", return_value=mocker.Mock()),
         mocker.patch("mplug.mplug.Path.exists", return_value=True),
         mocker.patch("mplug.mplug.Path.glob", return_value=[]),
         mocker.patch("mplug.mplug.Path.is_symlink", return_value=True),
@@ -388,7 +388,7 @@ def test_mplug_install_by_id_git_filepresent(mpl, mock_files, mocker):
     exists."""
     mock_files.Path_is_symlink.return_value = True
     mock_files.Path_exists.return_value = True
-    mock_repo_clone = mocker.spy(mplug.MPlug, "__clone_git__")
+    mock_repo_clone = mocker.spy(mplug.mplug, "git_clone_or_pull")
     searchterm = "searchterm"
     repo_url = " git_url"
     mpl.script_directory[searchterm] = {

@@ -14,10 +14,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
-from git import Repo
-
+from .download import download_file, download_tar, git_clone_or_pull, git_pull
 from .interaction import ask_num, ask_path, ask_yes_no
-from .util import download_file, download_tar, resolve_templates, wrap
+from .util import resolve_templates, wrap
 
 NAME = "mplug"
 
@@ -86,7 +85,7 @@ class MPlug:
     def update(self):
         """Get or update the 'mpv script directory'."""
         logging.info("Updating %s", self.directory_filename)
-        self.__clone_git__(self.directory_remoteurl, self.directory_folder)
+        git_clone_or_pull(self.directory_remoteurl, self.directory_folder)
 
     def uninstall(self, plugin_id: str, remove: bool = True):
         """Remove or disable a plugin.
@@ -215,7 +214,7 @@ class MPlug:
             sys.exit(13)
         if plugin["install"] == "git":
             logging.debug("Clone git repo %s to %s", url, install_dir)
-            self.__clone_git__(url, install_dir)
+            git_clone_or_pull(url, install_dir)
         elif plugin["install"] == "url":
             filename = plugin["filename"]
             logging.debug("Downloading %s to %s", url, install_dir)
@@ -260,8 +259,7 @@ class MPlug:
             url = resolve_templates(plugin["receiving_url"])
             if plugin["install"] == "git":
                 logging.debug("Updating repo in %s", install_dir)
-                repo = Repo(install_dir)
-                repo.remote().pull()
+                git_pull(install_dir)
             elif plugin["install"] == "tar":
                 logging.debug("Downloading %s to %s", url, install_dir)
                 download_tar(url, install_dir)
@@ -335,17 +333,6 @@ class MPlug:
             if value["name"] == pluginname:
                 plugins.append(key)
         return plugins
-
-    @staticmethod
-    def __clone_git__(repourl: str, gitdir: Path) -> Repo:
-        """Clone or update a repository into a given folder."""
-        if gitdir.exists():
-            repo = Repo(gitdir)
-            logging.debug("Repo already cloned, pull latest changes instead.")
-            repo.remote().pull()
-        else:
-            repo = Repo.clone_from(repourl, gitdir, multi_options=["--depth 1"])
-        return repo
 
     @staticmethod
     def __install_files__(srcdir: Path, filelist: List[str], dstdir: Path):
