@@ -115,7 +115,7 @@ class MPlug:
             else:
                 logging.error("Can't uninstall files %s: unknown location.", exefiles)
         if remove:
-            logging.info(f"Remove directory {install_dir}")
+            logging.info("Remove directory {}".format((install_dir)))
             shutil.rmtree(install_dir)
         if remove:
             del self.installed_plugins[plugin_id]
@@ -136,7 +136,7 @@ class MPlug:
                     "Multiple matching plugins found, please specify plugin id."
                 )
                 sys.exit(10)
-            elif ask_yes_no(f"Uninstall plugin {potential_plugins[0]}"):
+            elif ask_yes_no("Uninstall plugin {}".format((potential_plugins[0]))):
                 return self.uninstall(potential_plugins[0], remove)
             else:
                 sys.exit(0)
@@ -175,7 +175,7 @@ class MPlug:
             logging.error("No matching plugins found.")
             sys.exit(3)
         elif len(plugins) == 1:
-            if ask_yes_no(f"Install {plugins[0]}?"):
+            if ask_yes_no("Install {}?".format((plugins[0]))):
                 self.install(plugins[0])
             else:
                 sys.exit(0)
@@ -191,7 +191,7 @@ class MPlug:
         plugin = self.script_directory[plugin_id].copy()
 
         if "install" not in plugin:
-            errormsg = f"No installation method for {plugin_id}"
+            errormsg = "No installation method for {}".format((plugin_id))
             explanation = """\
             This means, so far no one added the installation method to the mpv
             script directory. Doing so is most likely possible with just a few
@@ -225,7 +225,9 @@ class MPlug:
             download_tar(url, install_dir)
         else:
             logging.error(
-                f"Can't install {plugin_id}: unknown installation method: {plugin['install']}"
+                "Can't install {}: unknown installation method: {}".format(
+                    (plugin_id), (plugin["install"])
+                )
             )
             sys.exit(5)
         for filetype, directory in self.installation_dirs.items():
@@ -382,7 +384,7 @@ class MPlug:
             file = resolve_templates(file)
             filename = Path(file).name
             dst = folder / filename
-            logging.info(f"Removing {dst}")
+            logging.info("Removing {}".format((dst)))
             if not dst.exists():
                 continue
             if not dst.is_symlink():

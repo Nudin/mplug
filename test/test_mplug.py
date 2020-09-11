@@ -247,7 +247,7 @@ def test_mplug_search_onematch_decline(mpl, mocker):
     searchterm = "searchterm"
     mpl.script_directory["uniq-id"] = {
         "name": "name",
-        "desc": f"something {searchterm} something",
+        "desc": "something {} something".format((searchterm)),
     }
     mock_yes_no = mocker.patch("mplug.mplug.ask_yes_no", return_value=False)
     with pytest.raises(SystemExit) as pytest_wrapped_e:
@@ -262,7 +262,7 @@ def test_mplug_search_onematche_choose(mpl, mocker):
     searchterm = "searchterm"
     mpl.script_directory["uniq-id"] = {
         "name": "name",
-        "desc": f"something {searchterm} something",
+        "desc": "something {} something".format((searchterm)),
     }
     mock_input = mocker.patch("mplug.mplug.ask_yes_no", return_value=True)
     with pytest.raises(SystemExit) as pytest_wrapped_e:
@@ -278,10 +278,10 @@ def test_mplug_search_multiplematches_decline(mpl, mocker):
     searchterm = "searchterm"
     mpl.script_directory["uniq-id"] = {
         "name": "name",
-        "desc": f"something {searchterm} something",
+        "desc": "something {} something".format((searchterm)),
     }
     mpl.script_directory["uniq-id2"] = {
-        "name": f"something {searchterm} something",
+        "name": "something {} something".format((searchterm)),
         "desc": "description",
     }
     mock_ask_num = mocker.patch("mplug.mplug.ask_num", return_value=None)
@@ -297,10 +297,10 @@ def test_mplug_search_multiplematches_choose(mpl, mocker):
     searchterm = "searchterm"
     mpl.script_directory["uniq-id"] = {
         "name": "name",
-        "desc": f"something {searchterm} something",
+        "desc": "something {} something".format((searchterm)),
     }
     mpl.script_directory["uniq-id2"] = {
-        "name": f"something {searchterm} something",
+        "name": "something {} something".format((searchterm)),
         "desc": "description",
     }
     mock_input = mocker.patch("mplug.interaction.input", return_value="1")

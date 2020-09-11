@@ -32,7 +32,7 @@ def ask_num(
     """
     print(wrap(question))
     for i, (opt, desc) in enumerate(zip_longest(options, descriptions or [])):
-        print(f"[{i}] {opt}")
+        print("[{}] {}".format((i), (opt)))
         if desc is not None:
             print(wrap(desc, indent=1))
     try:
@@ -55,7 +55,7 @@ def ask_num(
 
 def ask_yes_no(question: str) -> bool:
     """Ask a yes-no-question."""
-    answer = input(f"{question} [y/N] ")
+    answer = input("{} [y/N] ".format((question)))
     if answer in ["y", "Y"]:
         return True
     return False
@@ -67,7 +67,7 @@ def ask_path(question: str, default: Path) -> Path:
 
     question: Text to display on promt
     default: Default path, returned if user gives no input"""
-    pathstr = input(f"{question} [{default}]\n> ").strip()
+    pathstr = input("{} [{}]\n> ".format((question), (default))).strip()
     if pathstr == "":
         path = default
     else:

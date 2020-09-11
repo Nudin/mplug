@@ -5,13 +5,6 @@
 #
 # Copyright (C) Michael F. Schönitzer, 2020
 
-"""
-MPlug – a plugin manager for mpv.
-
-See here for details:
-https://github.com/Nudin/mplug
-"""
-
 import logging
 import sys
 import textwrap
@@ -36,10 +29,10 @@ def print_help():
     """Print help.
 
     This is so far done by hand, until it's worth to use a proper argument parser."""
-    help_text = f"""\
-        {NAME} {VERSION}
+    help_text = """\
+        {} {}
 
-        Usage: {NAME} [-v] command
+        Usage: {} [-v] command
 
         Available commands:
         - install NAME|ID          Install a plugin by name or plugin-id
@@ -48,8 +41,10 @@ def print_help():
         - search TEXT              Search for a plugin by name and description
         - update                   Update the list of available plugins
         - upgrade                  Update all plugins
-        - list-installed           List all plugins installed with {NAME}
-        """
+        - list-installed           List all plugins installed with {}
+        """.format(
+        (NAME), (VERSION), (NAME), (NAME)
+    )
     print(textwrap.dedent(help_text))
 
 
