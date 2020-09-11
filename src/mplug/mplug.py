@@ -3,11 +3,18 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
 # Copyright (C) Michael F. Schönitzer, 2020
+"""
+Main module containing the main class MPlug.
+
+The MPlug class is the plugin manager that has functions that can be called to
+install, uninstall or query plugins.
+MPlug works using the `mpv script directory`, see here for details:
+https://github.com/Nudin/mpv-script-directory
+"""
 
 import json
 import logging
 import os
-import platform
 import shutil
 import sys
 from datetime import datetime
@@ -15,7 +22,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from .download import download_file, download_tar, git_clone_or_pull, git_pull
-from .interaction import ask_num, ask_path, ask_yes_no
+from .interaction import ask_num, ask_path, ask_yes_no, check_os
 from .util import resolve_templates, wrap
 
 NAME = "mplug"
@@ -61,12 +68,12 @@ class MPlug:
             if age > 60 * 60 * 24 * 30:
                 logging.debug("Update mpv_script_directory due to it's age")
                 self.update()
-        with open(script_dir_file) as f:
-            self.script_directory = json.load(f)
+        with open(script_dir_file) as file:
+            self.script_directory = json.load(file)
         self.statefile = self.workdir / "installed_plugins"
         try:
-            with open(self.statefile) as f:
-                self.installed_plugins = json.load(f)
+            with open(self.statefile) as statefile:
+                self.installed_plugins = json.load(statefile)
         except json.JSONDecodeError:
             logging.error(
                 "Failed to load mplug file %s:", self.statefile, exc_info=True
@@ -78,8 +85,8 @@ class MPlug:
 
     def save_state_to_disk(self):
         """Write installed plugins on exit."""
-        with open(self.statefile, "w") as f:
-            json.dump(self.installed_plugins, f)
+        with open(self.statefile, "w") as statefile:
+            json.dump(self.installed_plugins, statefile)
             logging.debug("Saving list of installed plugins")
 
     def update(self):
@@ -198,14 +205,8 @@ class MPlug:
             logging.error(url)
             sys.exit(4)
 
-        if plugin.get("os", []):
-            current_os = platform.system().title()
-            if current_os not in plugin["os"]:
-                os_string = ", ".join(plugin["os"])
-                if not ask_yes_no(
-                    "Warning: This plugin works only on: %s. Continue?" % os_string
-                ):
-                    sys.exit(0)
+        if not check_os(plugin.get("os", [])):
+            sys.exit(0)
         try:
             install_dir = self.workdir / plugin["install_dir"]
             url = resolve_templates(plugin["receiving_url"])
@@ -345,6 +346,7 @@ class MPlug:
             src = srcdir / file
             filename = Path(file).name
             if not src.exists():
+                # pylint: disable=W1201
                 logging.error(
                     "File %s does not exsist. "
                     + "Check information in mpv script directory for correctness.",

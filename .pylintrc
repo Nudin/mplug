@@ -1,0 +1,5 @@
+[MESSAGES CONTROL]
+disable = C0330, C0326, C0199, C0411, W1203, R1705
+
+[DESIGN]
+max-attributes=8

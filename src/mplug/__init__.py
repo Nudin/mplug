@@ -5,6 +5,13 @@
 #
 # Copyright (C) Michael F. Schönitzer, 2020
 
+"""
+MPlug – a plugin manager for mpv.
+
+See here for details:
+https://github.com/Nudin/mplug
+"""
+
 import logging
 import sys
 import textwrap
@@ -13,11 +20,9 @@ from typing import Optional
 from .mplug import MPlug
 
 try:
-    from importlib.metadata import (PackageNotFoundError,  # type: ignore
-                                    version)
+    from importlib.metadata import PackageNotFoundError, version  # type: ignore
 except ImportError:  # pragma: no cover
-    from importlib_metadata import (PackageNotFoundError,  # type: ignore
-                                    version)
+    from importlib_metadata import PackageNotFoundError, version  # type: ignore
 
 
 NAME = "mplug"
@@ -28,6 +33,9 @@ except PackageNotFoundError:  # pragma: no cover
 
 
 def print_help():
+    """Print help.
+
+    This is so far done by hand, until it's worth to use a proper argument parser."""
     help_text = f"""\
         {NAME} {VERSION}
 
@@ -116,6 +124,7 @@ def arg_parse(argv):
 
 
 def run():
+    """Main entry point"""
     main(*arg_parse(sys.argv))
 
 

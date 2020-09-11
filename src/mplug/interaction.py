@@ -4,6 +4,11 @@
 #
 # Copyright (C) Michael F. Schönitzer, 2020
 
+"""
+Functions that interact with the user on the command line, by promoting for input.
+"""
+
+import platform
 from itertools import zip_longest
 from pathlib import Path
 from typing import List, Optional
@@ -68,3 +73,15 @@ def ask_path(question: str, default: Path) -> Path:
     else:
         path = Path(pathstr)
     return path.expanduser().absolute()
+
+
+def check_os(supported: List[str]) -> bool:
+    """Check if the operating system is supported, if not promt the user to
+    decide if the installation should be continued anyway."""
+    if supported == []:
+        return True
+    current_os = platform.system().title()
+    if current_os in supported:
+        return True
+    os_string = ", ".join(supported)
+    return ask_yes_no("Warning: This plugin works only on: %s. Continue?" % os_string)

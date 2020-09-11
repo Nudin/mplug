@@ -1,3 +1,15 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+#
+# Copyright (C) Michael F. Schönitzer, 2020
+
+"""
+Different simpler functions.
+
+Functions: wrap, resolve_templates
+"""
+
 import platform
 import shutil
 import textwrap
@@ -29,6 +41,7 @@ def resolve_templates(text: str) -> str:
     - {{arch-short}} -> x64, x32
     - {{shared-lib-ext}} -> so, dll
     """
+    # pylint: disable=C0103
     os = platform.system().lower()
     arch = platform.machine()
     arch_short = arch.replace("x86_", "x")
