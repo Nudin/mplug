@@ -4,7 +4,7 @@
 #
 # Copyright (C) Michael F. Schönitzer, 2020
 
-import itertools
+from itertools import zip_longest
 from pathlib import Path
 from typing import List, Optional
 
@@ -25,10 +25,8 @@ def ask_num(
     options that will be printed together with the options.
     returns: the choice
     """
-    if descriptions is None:
-        descriptions = itertools.repeat(None)
     print(wrap(question))
-    for i, (opt, desc) in enumerate(zip(options, descriptions)):
+    for i, (opt, desc) in enumerate(zip_longest(options, descriptions or [])):
         print(f"[{i}] {opt}")
         if desc is not None:
             print(wrap(desc, indent=1))

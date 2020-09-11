@@ -54,12 +54,16 @@ def main(operation: str, name: Optional[str] = None, verbose: bool = False):
     plug = MPlug(verbose)
 
     if operation == "install":
+        assert name is not None
         plug.install_by_name(name)
     elif operation == "uninstall":
+        assert name is not None
         plug.uninstall_by_name(name)
     elif operation == "search":
+        assert name is not None
         plug.search(name)
     elif operation == "disable":
+        assert name is not None
         plug.uninstall_by_name(name, remove=False)
     elif operation == "update":
         plug.update()
