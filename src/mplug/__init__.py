@@ -5,6 +5,12 @@
 #
 # Copyright (C) Michael F. Schönitzer, 2020
 
+"""
+MPlug – a plugin manager for mpv.
+See here for details:
+https://github.com/Nudin/mplug
+"""
+
 import logging
 import sys
 import textwrap
