@@ -14,15 +14,18 @@ jobs:
     - uses: actions/checkout@v2
       with:
         ref: python35
+        fetch-depth: 0
     - uses: actions/setup-python@v1
       with:
         python-version: ${{ matrix.python-version }}
         architecture: x64
-    - run: apt-get install moreutils
+    - run: sudo apt-get install moreutils
     - run: pip install future-fstrings==1.2.0
     - name: Merge changes from master, overwrite all changes to python code
       run: |
-        git merge master
+        git config user.name github-actions
+        git config user.email github-actions@github.com
+        git merge origin/master
         git checkout --theirs src/mplug/*.py
         git add src/mplug/*.py
     - name: Replace f-strings
@@ -36,10 +39,8 @@ jobs:
       shell: bash
     - name: Commit changes
       run: |
-          date > generated.txt
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          git add .
-          git commit -m "Generate python 3.5 compatible code from current master"
-          git push
+        date > generated.txt
+        git add .
+        git commit -m "Generate python 3.5 compatible code from current master"
+        git push
 
