@@ -76,6 +76,7 @@ def test_main(mocker):
     mock_list_installed = mocker.patch("mplug.MPlug.list_installed")
     mock_update = mocker.patch("mplug.MPlug.update")
     mock_upgrade = mocker.patch("mplug.MPlug.upgrade")
+    mocker.patch("mplug.MPlug.__init__", return_value=None)
     argmap = {
         "install": mock_install_by_name,
         "search": mock_search,
