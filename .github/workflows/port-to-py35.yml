@@ -23,6 +23,8 @@ jobs:
     - run: pip install future-fstrings==1.2.0
     - name: Merge changes from master, overwrite all changes to python code
       run: |
+        git config user.name github-actions
+        git config user.email github-actions@github.com
         git merge origin/master
         git checkout --theirs src/mplug/*.py
         git add src/mplug/*.py
@@ -37,10 +39,8 @@ jobs:
       shell: bash
     - name: Commit changes
       run: |
-          date > generated.txt
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          git add .
-          git commit -m "Generate python 3.5 compatible code from current master"
-          git push
+        date > generated.txt
+        git add .
+        git commit -m "Generate python 3.5 compatible code from current master"
+        git push
 
