@@ -1,0 +1,45 @@
+name: Port to python 3.5
+on:
+  push:
+    branches:
+      - master
+jobs:
+  fstrings:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.5']
+    name: Python ${{ matrix.python-version }}
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        ref: python35
+    - uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+        architecture: x64
+    - run: apt-get install moreutils
+    - run: pip install future-fstrings==1.2.0
+    - name: Merge changes from master, overwrite all changes to python code
+      run: |
+        git merge master
+        git checkout --theirs src/mplug/*.py
+        git add src/mplug/*.py
+    - name: Replace f-strings
+      working-directory: ./src/mplug
+      run: |
+        future-fstrings-show __init__.py | sponge __init__.py
+        future-fstrings-show mplug.py | sponge mplug.py
+        future-fstrings-show interaction.py | sponge interaction.py
+        future-fstrings-show util.py | sponge util.py
+        future-fstrings-show download.py | sponge download.py
+      shell: bash
+    - name: Commit changes
+      run: |
+          date > generated.txt
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add .
+          git commit -m "Generate python 3.5 compatible code from current master"
+          git push
+
