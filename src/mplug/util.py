@@ -10,9 +10,13 @@ Different simpler functions.
 Functions: wrap, resolve_templates
 """
 
+import os
 import platform
 import shutil
+import stat
 import textwrap
+from pathlib import Path
+from typing import List
 
 
 def wrap(text, indent=0, dedent=False):
@@ -42,15 +46,25 @@ def resolve_templates(text: str) -> str:
     - {{shared-lib-ext}} -> so, dll
     """
     # pylint: disable=C0103
-    os = platform.system().lower()
+    os_name = platform.system().lower()
     arch = platform.machine()
     arch_short = arch.replace("x86_", "x")
-    if os == "windows":
+    if os_name == "windows":
         shared_lib_ext = "dll"
     else:
         shared_lib_ext = "so"
     text = text.replace("{{shared-lib-ext}}", shared_lib_ext)
-    text = text.replace("{{os}}", os)
+    text = text.replace("{{os}}", os_name)
     text = text.replace("{{arch}}", arch)
     text = text.replace("{{arch-short}}", arch_short)
     return text
+
+
+def make_files_executable(filelist: List[Path]):
+    """On *nix based operating systems, mark the file as executable."""
+    os_name = platform.system().lower()
+    if "windows" in os_name:
+        return
+    for file in filelist:
+        st = os.stat(file)
+        os.chmod(file, st.st_mode | stat.S_IEXEC)
