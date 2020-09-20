@@ -23,7 +23,7 @@ from typing import List, Optional
 
 from .download import download_file, download_tar, git_clone_or_pull, git_pull
 from .interaction import ask_num, ask_path, ask_yes_no, check_os
-from .util import resolve_templates, wrap
+from .util import make_files_executable, resolve_templates, wrap
 
 NAME = "mplug"
 
@@ -243,9 +243,10 @@ class MPlug:
         if "exefiles" in plugin:
             exedir = ask_path("Where to put executable files?", Path("~/bin"))
             logging.info("Placing executables in %s", str(exedir))
-            self.__install_files__(
+            installed = self.__install_files__(
                 srcdir=install_dir, filelist=plugin["exefiles"], dstdir=exedir
             )
+            make_files_executable(installed)
             plugin["exedir"] = str(exedir)
         if "install-notes" in plugin:
             print(wrap(plugin["install-notes"]))
@@ -267,7 +268,7 @@ class MPlug:
                 logging.debug("Downloading %s to %s", url, install_dir)
                 download_tar(url, install_dir)
             elif plugin["install"] == "url":
-                filename = plugin["filename"]
+                filename = resolve_templates(plugin["filename"])
                 logging.debug("Downloading %s to %s", url, install_dir)
                 download_file(url, install_dir / filename)
             else:
@@ -338,11 +339,14 @@ class MPlug:
         return plugins
 
     @staticmethod
-    def __install_files__(srcdir: Path, filelist: List[str], dstdir: Path):
+    def __install_files__(
+        srcdir: Path, filelist: List[str], dstdir: Path
+    ) -> List[Path]:
         """Install selected files as symlinks into the corresponding folder."""
         if not dstdir.exists():
             logging.debug("Create directory %s", dstdir)
             os.makedirs(dstdir)
+        installed_files = []
         for file in filelist:
             file = resolve_templates(file)
             src = srcdir / file
@@ -376,6 +380,8 @@ class MPlug:
                 continue
             logging.debug("Copying file %s to %s", filename, dst)
             os.symlink(src, dst)
+            installed_files.append(dst)
+        return installed_files
 
     @staticmethod
     def __uninstall_files__(filelist: List[str], folder: Path):

@@ -40,7 +40,8 @@ jobs:
     - name: Commit changes
       run: |
         date > generated.txt
-        git add .
+        git add generated.txt
+        git add src/mplug/*.py
         git commit -m "Generate python 3.5 compatible code from current master"
         git push
 

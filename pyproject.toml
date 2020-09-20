@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mplug"
-version = "0.2.0"
+version = "0.2.1"
 description = "A plugin manager for mpv"
 authors = ["Michael F. Schönitzer <michael@schoenitzer.de>"]
 license = "MPL-2.0"

@@ -35,6 +35,8 @@ def fixture_mock_files(mocker):
             "os_makedirs",
             "os_symlink",
             "os_remove",
+            "os_stat",
+            "os_chmod",
             "shutil_rmtree",
             "Repo_clone_from",
             "Repo_init",
@@ -47,6 +49,7 @@ def fixture_mock_files(mocker):
         ],
     )
     current_timestamp = datetime.now().timestamp()
+    stat_mock = mocker.Mock(st_mtime=current_timestamp, st_mode=0)
     return IO_Mocks(
         mocker.patch("mplug.mplug.open", mocker.mock_open()),
         mocker.patch("json.load", return_value={}),
@@ -54,6 +57,8 @@ def fixture_mock_files(mocker):
         mocker.patch("os.makedirs", return_value=None),
         mocker.patch("os.symlink", return_value=None),
         mocker.patch("os.remove", return_value=None),
+        mocker.patch("os.stat", return_value=stat_mock),
+        mocker.patch("os.chmod", return_value=None),
         mocker.patch("shutil.rmtree", return_value=None),
         mocker.patch("mplug.download.Repo.clone_from", return_value=None),
         mocker.patch("mplug.download.Repo.__init__", return_value=None),
@@ -63,7 +68,7 @@ def fixture_mock_files(mocker):
         mocker.patch("mplug.mplug.Path.is_symlink", return_value=True),
         mocker.patch(
             "mplug.mplug.Path.stat",
-            return_value=mocker.Mock(st_mtime=current_timestamp),
+            return_value=stat_mock,
         ),
         mocker.patch("mplug.mplug.Path.resolve", return_value=Path(".")),
     )
@@ -427,13 +432,15 @@ def test_mplug_install_by_id_git_repopresent(mpl, mock_files):
 
 def test_mplug_install_by_id_git_withexe(mpl, mocker, mock_files):
     """Successfully install and uninstall a plugin containing an executable."""
-    mock_files.Path_exists.return_value = False
-    install = mocker.patch("mplug.mplug.MPlug.__install_files__", return_value=None)
-    exedir = "path_of_executables"
-    mocker.patch("mplug.mplug.ask_path", return_value=Path(exedir))
     plugin_id = "plugin_id"
     repo_url = " git_url"
     filename = "executable_file"
+    exedir = "path_of_executables"
+    mock_files.Path_exists.return_value = False
+    install = mocker.patch(
+        "mplug.mplug.MPlug.__install_files__", return_value=[filename]
+    )
+    mocker.patch("mplug.mplug.ask_path", return_value=Path(exedir))
     mpl.script_directory[plugin_id] = {
         "name": plugin_id,
         "install": "git",
