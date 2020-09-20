@@ -12,6 +12,7 @@ Functions: wrap, resolve_templates
 
 import os
 import platform
+import re
 import shutil
 import stat
 import textwrap
@@ -43,17 +44,21 @@ def resolve_templates(text: str) -> str:
     - {{os}} -> linux, windows, …
     - {{arch}} -> x86_64, x86_32, …
     - {{arch-short}} -> x64, x32
-    - {{shared-lib-ext}} -> so, dll
+    - {{shared-lib-ext}} -> .so, .dll
+    - {{executable-ext}} -> .exe or nothing, if later remove dot
     """
     # pylint: disable=C0103
     os_name = platform.system().lower()
     arch = platform.machine()
     arch_short = arch.replace("x86_", "x")
     if os_name == "windows":
-        shared_lib_ext = "dll"
+        shared_lib_ext = r"\1dll"
+        executable_ext = r"\1exe"
     else:
-        shared_lib_ext = "so"
-    text = text.replace("{{shared-lib-ext}}", shared_lib_ext)
+        shared_lib_ext = r"\1so"
+        executable_ext = ""
+    text = re.sub(r"(\.?){{shared-lib-ext}}", shared_lib_ext, text)
+    text = re.sub(r"(\.?){{executable-ext}}", executable_ext, text)
     text = text.replace("{{os}}", os_name)
     text = text.replace("{{arch}}", arch)
     text = text.replace("{{arch-short}}", arch_short)

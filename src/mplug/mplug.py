@@ -266,7 +266,7 @@ class MPlug:
                 logging.debug("Downloading %s to %s", url, install_dir)
                 download_tar(url, install_dir)
             elif plugin["install"] == "url":
-                filename = plugin["filename"]
+                filename = resolve_templates(plugin["filename"])
                 logging.debug("Downloading %s to %s", url, install_dir)
                 download_file(url, install_dir / filename)
             else:
